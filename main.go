@@ -9,16 +9,15 @@ import (
 	"net/http"
 )
 
-// this is a comment
-
 const (
-	API_BASE    = "https://yobit.net/api/"
-	API_VERSION = "3"
+	ApiBase    = "https://yobit.net/api/"
+	ApiVersion = "3"
 )
 
 func main() {
 
-	url := "https://yobit.net/api/3/ticker/xem_usd-eth_usd-xem_eth"
+	url := ApiBase + ApiVersion + "/ticker/xem_usd-eth_usd-xem_eth"
+	fmt.Println(Bold(url+"\n"))
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Fatal("NewRequest: ", err)

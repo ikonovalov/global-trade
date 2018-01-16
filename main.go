@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"errors"
 	"os"
+	"strings"
 )
 
 const (
@@ -52,7 +53,7 @@ func main() {
 	if len(argsWithProg) == 2 {
 		pair = argsWithProg[1]
 	} else {
-		pair = "xem_usd-eth_usd-xem_eth"
+		pair = "btc_usd-ltc_usd-xem_usd-eth_usd-xem_eth"
 	}
 
 	url := tickers(pair)
@@ -71,7 +72,7 @@ func main() {
 	// print result
 	for ticker, v := range tickerResponse.Tickers {
 		fmt.Printf("%s High [%f]\t Avg [%f]\t Low[%f]\t Volume[%f]\t Current Volume[%f]\n",
-			Bold(ticker), v.High, Green(v.Avg), v.Low, v.Vol, v.VolCur)
+			Bold(strings.ToUpper(ticker)), v.High, Green(v.Avg), v.Low, v.Vol, v.VolCur)
 	}
 
 }

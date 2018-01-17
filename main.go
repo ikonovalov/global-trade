@@ -17,12 +17,52 @@ const (
 	ApiVersion = "3"
 )
 
-func tickers(pairs string) string {
-	return ApiBase + ApiVersion + "/ticker/" + pairs
+func tickers24(client *http.Client, pairs string, ch chan TickerInfoResponse) {
+	url := ApiBase + ApiVersion + "/ticker/" + pairs
+	response := query(client, url)
+
+	var tickerResponse TickerInfoResponse
+	pTicker := &tickerResponse.Tickers
+
+	if err := unmarshal(response, pTicker); err != nil {
+		panic(err)
+	}
+	ch <- tickerResponse
+}
+
+func info(client *http.Client, ch chan InfoResponse) {
+	url := ApiBase + ApiVersion + "/info"
+	response := query(client, url)
+	var infoResponse InfoResponse
+	if err := unmarshal(response, &infoResponse); err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
+	ch <- infoResponse
+}
+
+func depth(client *http.Client, pairs string, ch chan DepthResponse)  {
+	depthLimited(client, pairs, 150, ch)
+}
+
+func depthLimited(client *http.Client, pairs string, limit uint8, ch chan DepthResponse)  {
+	url := ApiBase + ApiVersion + "/depth/" + pairs + "?limit=" + string(limit)
+	response := query(client, url)
+	var depthResponse DepthResponse
+	depthResponse.Raw = string(response)
+	if err := unmarshal(response, &depthResponse.Orders); err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
+	ch <- depthResponse
 }
 
 func unmarshal(data [] byte, obj interface{}) error {
-	return json.Unmarshal(data, obj)
+	error := json.Unmarshal(data, obj)
+	if error != nil {
+		log.Fatal("Unmarshaling failed\n" + string(data))
+	}
+	return error
 }
 
 func query(client *http.Client, url string) ([]byte) {
@@ -40,7 +80,7 @@ func query(client *http.Client, url string) ([]byte) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		fmt.Errorf("error. HTTP %d", resp.StatusCode)
-		panic(errors.New("Status is not 200. It's " + string(resp.StatusCode)))
+		panic(errors.New("Something goes wrong. We got HTTP" + string(resp.StatusCode)))
 	}
 	response, _ := ioutil.ReadAll(resp.Body)
 	return response
@@ -56,23 +96,26 @@ func main() {
 		pair = "btc_usd-ltc_usd-xem_usd-eth_usd-xem_eth"
 	}
 
-	url := tickers(pair)
-	fmt.Println(Bold(url + "\n"))
-
 	client := &http.Client{}
-	response := query(client, url)
-
-	var tickerResponse TickerInfoResponse
-	pTicker := &tickerResponse.Tickers
-
-	if err := unmarshal(response, pTicker); err != nil {
-		panic(err)
-	}
+	ch := make(chan TickerInfoResponse)
+	go tickers24(client, pair, ch)
+	tickerResponse := <-ch
 
 	// print result
 	for ticker, v := range tickerResponse.Tickers {
-		fmt.Printf("%s High [%f]\t Avg [%f]\t Low[%f]\t Volume[%f]\t Current Volume[%f]\n",
-			Bold(strings.ToUpper(ticker)), v.High, Green(v.Avg), v.Low, v.Vol, v.VolCur)
+		fmt.Printf(
+			"%-9s High [%.8f] Avg [%.8f] Low[%.8f] Volume[%.8f] Current Volume[%.8f] Buy[%.8f] Sell[%.8f] Last[%.8f]\n",
+			Bold(strings.ToUpper(ticker)), v.High, Green(v.Avg), v.Low, v.Vol, v.VolCur, v.Buy, v.Sell, v.Last)
+	}
+
+	ch2 := make(chan DepthResponse)
+	go depth(client, pair, ch2)
+	depthResponse := <- ch2
+	orders := depthResponse.Orders[pair]
+	for idx, ask := range orders.Asks {
+		fmt.Printf("#%d %.8f <- %.8f\n" , idx, ask.Price, ask.Quantity)
 	}
 
 }
+
+

@@ -1,0 +1,3 @@
+GET https://yobit.net/api/3/depth/ltc_btc?limit=10
+
+###

@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 	"errors"
-	"gopkg.in/alecthomas/kingpin.v2"
+	"strconv"
 )
 
 const (
@@ -15,67 +15,64 @@ const (
 	ApiVersion = "3"
 )
 
-var (
-	command   = kingpin.Arg("command", "Command").Required().String()
-	ticker   = kingpin.Arg("ticker", "Ticker").String()
-)
 
-func tickers24(client *http.Client, pairs string, ch chan TickerInfoResponse) {
+
+func (y *Yobit) Tickers24(pairs string, ch chan TickerInfoResponse) {
 	url := ApiBase + ApiVersion + "/ticker/" + pairs
-	response := query(client, url)
+	response := y.query(url)
 
 	var tickerResponse TickerInfoResponse
 	pTicker := &tickerResponse.Tickers
 
-	if err := unmarshal(response, pTicker); err != nil {
+	if err := y.unmarshal(response, pTicker); err != nil {
 		panic(err)
 	}
 	ch <- tickerResponse
 }
 
-func info(client *http.Client, ch chan InfoResponse) {
+func (y *Yobit) Info(ch chan InfoResponse) {
 	url := ApiBase + ApiVersion + "/info"
-	response := query(client, url)
+	response := y.query(url)
 	var infoResponse InfoResponse
-	if err := unmarshal(response, &infoResponse); err != nil {
+	if err := y.unmarshal(response, &infoResponse); err != nil {
 		log.Fatal(err)
 		panic(err)
 	}
 	ch <- infoResponse
 }
 
-func depth(client *http.Client, pairs string, ch chan DepthResponse)  {
-	depthLimited(client, pairs, 150, ch)
+func (y *Yobit) Depth(pairs string, ch chan DepthResponse)  {
+	y.DepthLimited(pairs, 150, ch)
 }
 
-func depthLimited(client *http.Client, pairs string, limit uint8, ch chan DepthResponse)  {
-	url := ApiBase + ApiVersion + "/depth/" + pairs + "?limit=" + string(limit)
-	response := query(client, url)
+func (y *Yobit) DepthLimited(pairs string, limit int, ch chan DepthResponse)  {
+	url := ApiBase + ApiVersion + "/depth/" + pairs + "?limit=" + strconv.Itoa(limit)
+	response := y.query(url)
 	var depthResponse DepthResponse
 	depthResponse.Raw = string(response)
-	if err := unmarshal(response, &depthResponse.Orders); err != nil {
+	if err := y.unmarshal(response, &depthResponse.Orders); err != nil {
 		log.Fatal(err)
 		panic(err)
 	}
 	ch <- depthResponse
 }
 
-func unmarshal(data [] byte, obj interface{}) error {
-	error := json.Unmarshal(data, obj)
-	if error != nil {
+func (y *Yobit) unmarshal(data [] byte, obj interface{}) error {
+	err := json.Unmarshal(data, obj)
+	if err != nil {
 		log.Fatal("Unmarshaling failed\n" + string(data))
 	}
-	return error
+	return err
 }
 
-func query(client *http.Client, url string) ([]byte) {
+func (y *Yobit) query(url string) ([]byte) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Fatal("NewRequest: ", err)
 		panic(err)
 	}
 
-	resp, err := client.Do(req)
+	resp, err := y.client.Do(req)
 	if err != nil {
 		log.Fatal("Do: ", err)
 		panic(err)

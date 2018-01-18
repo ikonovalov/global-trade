@@ -10,15 +10,16 @@ import (
 )
 
 var (
-	app    = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.")
+	app = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.")
 
-	cmdTicker    = app.Command("ticker", "Client command: depth | ticker")
+	cmdInfo = app.Command("info", "Show all listed tickers on the Yobit")
+
+	cmdTicker     = app.Command("ticker", "Client command: depth | ticker")
 	cmdTickerPair = cmdTicker.Arg("pair", "Listing ticker name. eth_btc, xem_usd, and so on.").Default("btc_usd").String()
 
-	cmdDepth = app.Command("depth", "ASK/BID depth")
-	cmdDepthPair = cmdDepth.Arg("pair", "eth_btc, xem_usd and so on.").Default("btc_usd").String()
+	cmdDepth      = app.Command("depth", "ASK/BID depth")
+	cmdDepthPair  = cmdDepth.Arg("pair", "eth_btc, xem_usd and so on.").Default("btc_usd").String()
 	cmdDepthLimit = cmdDepth.Arg("limit", "Depth limit").Default("20").Int()
-	
 )
 
 func main() {
@@ -29,6 +30,21 @@ func main() {
 
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 	switch command {
+	case "info":
+		{
+			channel := make(chan InfoResponse)
+			go yobit.Info(channel)
+			infoResponse := <-channel
+
+			for name, desc := range infoResponse.Pairs {
+				Colored := Bold
+				if desc.Hidden != 0 {
+					Colored = Red
+				}
+				fmt.Printf("%s\tfee %f hidden %d min_amount %f min_price %f max_price %f \n",
+					Colored(Bold(strings.ToUpper(name))), desc.Fee, desc.Hidden, desc.MinAmount, desc.MinPrice, desc.MaxPrice)
+			}
+		}
 	case "ticker":
 		{
 			channel := make(chan TickerInfoResponse)
@@ -55,6 +71,7 @@ func main() {
 	}
 
 }
+
 func printDepth(idx int, ask Order) (int, error) {
 	return fmt.Printf("#%d %.8f <- %.8f\n", idx+1, ask.Price, ask.Quantity)
 }

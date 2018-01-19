@@ -88,7 +88,6 @@ type PairInfo struct {
 }
  */
 type DepthResponse struct {
-	Raw    string
 	Orders map[string]Orders
 }
 
@@ -98,7 +97,7 @@ type Orders struct {
 }
 
 type Order struct {
-	Price float64
+	Price    float64
 	Quantity float64
 }
 
@@ -113,3 +112,38 @@ func (n *Order) UnmarshalJSON(buf []byte) error {
 	}
 	return nil
 }
+
+/* trades
+{
+	"ltc_btc":[
+		{
+			"type":"ask",
+			"price":104.2,
+			"amount":0.101,
+			"tid":41234426,
+			"timestamp":1418654531
+		},
+		{
+			"type":"bid",
+			"price":103.53,
+			"amount":1.51414,
+			"tid":41234422,
+			"timestamp":1418654530
+		},
+		...
+	]
+	...
+}
+ */
+type TradesResponse struct {
+	Trades map[string][]Trade
+}
+
+type Trade struct {
+	Type string `json:"type"`
+	Price float64 `json:"price"`
+	Amount float64 `json:"amount"`
+	Tid uint64 `json:"tid"`
+	Timestamp int64 `json:"timestamp"`
+}
+

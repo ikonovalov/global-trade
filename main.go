@@ -7,6 +7,7 @@ import (
 	"strings"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
+	"time"
 )
 
 var (
@@ -15,11 +16,15 @@ var (
 	cmdInfo = app.Command("info", "Show all listed tickers on the Yobit")
 
 	cmdTicker     = app.Command("ticker", "Client command: depth | ticker")
-	cmdTickerPair = cmdTicker.Arg("pair", "Listing ticker name. eth_btc, xem_usd, and so on.").Default("btc_usd").String()
+	cmdTickerPair = cmdTicker.Arg("pairs", "Listing ticker name. eth_btc, xem_usd, and so on.").Default("btc_usd").String()
 
 	cmdDepth      = app.Command("depth", "ASK/BID depth")
-	cmdDepthPair  = cmdDepth.Arg("pair", "eth_btc, xem_usd and so on.").Default("btc_usd").String()
-	cmdDepthLimit = cmdDepth.Arg("limit", "Depth limit").Default("20").Int()
+	cmdDepthPair  = cmdDepth.Arg("pairs", "eth_btc, xem_usd and so on.").Default("btc_usd").String()
+	cmdDepthLimit = cmdDepth.Arg("limit", "Depth output limit").Default("20").Int()
+
+	cmdTrades = app.Command("trades", "Last trades information for pairs")
+	cmdTradesPair = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default("btc_usd").String()
+	cmdTradesLimit = cmdTrades.Arg("limit", "Trades output limit.").Default("100").Int()
 )
 
 func main() {
@@ -41,6 +46,7 @@ func main() {
 				if desc.Hidden != 0 {
 					Colored = Red
 				}
+				// TODO Try https://github.com/olekukonko/tablewriter
 				fmt.Printf("%s\tfee %f hidden %d min_amount %f min_price %f max_price %f \n",
 					Colored(Bold(strings.ToUpper(name))), desc.Fee, desc.Hidden, desc.MinAmount, desc.MinPrice, desc.MaxPrice)
 			}
@@ -61,9 +67,20 @@ func main() {
 			go yobit.DepthLimited(*cmdDepthPair, *cmdDepthLimit, channel)
 			depthResponse := <-channel
 			orders := depthResponse.Orders[*cmdDepthPair]
-
+			fmt.Println(Bold(strings.ToUpper(*cmdDepthPair)))
 			for idx, ask := range orders.Asks {
 				printDepth(idx, ask)
+			}
+		}
+	case "trades":
+		{
+			channel := make(chan TradesResponse)
+			go yobit.TradesLimited(*cmdTradesPair, *cmdTradesLimit, channel)
+			tradesResponse := <- channel
+			for ticker, trades := range tradesResponse.Trades {
+				fmt.Println(Bold(strings.ToUpper(ticker)))
+				printTrades(trades)
+
 			}
 		}
 	default:
@@ -78,7 +95,22 @@ func printDepth(idx int, ask Order) (int, error) {
 
 func printTicker(v Ticker, tickerName string) {
 	spread := v.Sell - v.Buy
+	updated := time.Unix(v.Updated, 0).Format(time.Stamp)
 	fmt.Printf(
-		"%-9s H/A/L [%.8f/%.8f/%.8f] Buy[%.8f] Sell[%.8f] Last[%.8f] Spread[%.8f] Volume[%.8f] Current Volume[%.8f] \n",
-		Bold(strings.ToUpper(tickerName)), v.High, Green(v.Avg), v.Low, v.Buy, v.Sell, Green(v.Last), BgRed(spread), v.Vol, v.VolCur)
+		"%s %-9s H/A/L [%.8f/%.8f/%.8f] Buy[%.8f] Sell[%.8f] Last[%.8f] Spread[%.8f] Volume[%.8f] Current Volume[%.8f] \n",
+		updated, Bold(strings.ToUpper(tickerName)), v.High, Green(v.Avg), v.Low, v.Buy, v.Sell, Green(v.Last), BgRed(spread), v.Vol, v.VolCur)
+}
+
+func printTrades(trades []Trade)  {
+	for _, trade := range trades {
+		tm := time.Unix(trade.Timestamp, 0).Format(time.Stamp)
+		Colored := BgGreen
+		tradeDirection := "Buy "
+		if trade.Type == "ask" {
+			Colored = BgRed
+			tradeDirection = "Sell"
+		}
+
+		fmt.Printf("%s %s Price[%.8f] Amount[%.8f]\n", tm, Colored(tradeDirection), trade.Price, trade.Amount)
+	}
 }

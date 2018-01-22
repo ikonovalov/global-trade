@@ -140,10 +140,24 @@ type TradesResponse struct {
 }
 
 type Trade struct {
-	Type string `json:"type"`
-	Price float64 `json:"price"`
-	Amount float64 `json:"amount"`
-	Tid uint64 `json:"tid"`
-	Timestamp int64 `json:"timestamp"`
+	Type      string  `json:"type"`
+	Price     float64 `json:"price"`
+	Amount    float64 `json:"amount"`
+	Tid       uint64  `json:"tid"`
+	Timestamp int64   `json:"timestamp"`
 }
 
+// ============ TRADE API OBJECTS =====================
+type GetInfoResponse struct {
+	Success uint8         `json:"success"`
+	Data    GetInfoReturn `json:"return"`
+}
+
+type GetInfoReturn struct {
+	Rights             map[string]uint8   `json:"rights"`
+	Funds              map[string]float64 `json:"funds"`
+	FundsIncludeOrders map[string]float64 `json:"funds_incl_orders"`
+	TransactionCount   int                `json:"transaction_count"`
+	OpenOrders         int                `json:"open_orders"`
+	ServerTime         uint64             `json:"server_time"`
+}

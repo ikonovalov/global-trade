@@ -68,15 +68,20 @@ func (y *Yobit) TradesLimited(pairs string, limit int, ch chan TradesResponse) {
 	ch <- tradesResponse
 }
 
-func (y *Yobit) GetInfo() {
-	resp := y.callPrivate("getInfo")
-	fmt.Println(string(resp))
+func (y *Yobit) GetInfo(ch chan GetInfoResponse) {
+	response := y.callPrivate("getInfo")
+	var getInfoResp GetInfoResponse
+	if err := y.unmarshal(response, &getInfoResp); err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
+	ch <- getInfoResp
 }
 
 func (y *Yobit) unmarshal(data [] byte, obj interface{}) error {
 	err := json.Unmarshal(data, obj)
 	if err != nil {
-		log.Fatal("Unmarshaling failed\n" + string(data))
+		log.Fatal(fmt.Sprintf("Unmarshaling failed\n%s\n%s",string(data), err.Error()))
 	}
 	return err
 }

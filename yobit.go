@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	ApiBase    = "https://yobit.io/api/"
+	ApiBase    = "https://yobit.net/api/"
 	ApiVersion = "3"
-	ApiTrade   = "https://yobit.io/tapi/"
+	ApiTrade   = "https://yobit.net/tapi/"
 )
 
 func (y *Yobit) Tickers24(pairs string, ch chan TickerInfoResponse) {

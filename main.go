@@ -8,6 +8,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
 	"time"
+	"github.com/ikonovalov/go-cloudflare-scraper"
 )
 
 var (
@@ -22,8 +23,8 @@ var (
 	cmdDepthPair  = cmdDepth.Arg("pairs", "eth_btc, xem_usd and so on.").Default("btc_usd").String()
 	cmdDepthLimit = cmdDepth.Arg("limit", "Depth output limit").Default("20").Int()
 
-	cmdTrades = app.Command("trades", "Last trades information for pairs")
-	cmdTradesPair = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default("btc_usd").String()
+	cmdTrades      = app.Command("trades", "Last trades information for pairs")
+	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default("btc_usd").String()
 	cmdTradesLimit = cmdTrades.Arg("limit", "Trades output limit.").Default("100").Int()
 )
 
@@ -31,7 +32,25 @@ func main() {
 
 	kingpin.Version("0.1.0")
 
-	yobit := Yobit{&http.Client{}}
+	scraper, err := scraper.NewTransport(http.DefaultTransport)
+	if err != nil {
+		panic(err)
+	}
+
+	keys, err := loadApiKeys()
+	if err != nil {
+		panic(err)
+	}
+
+	yobit := Yobit{
+		client: &http.Client{
+			Transport: scraper,
+			Jar:       scraper.Cookies,
+		},
+		apiKeys: &keys,
+	}
+
+	yobit.GetInfo()
 
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 	switch command {
@@ -42,13 +61,7 @@ func main() {
 			infoResponse := <-channel
 
 			for name, desc := range infoResponse.Pairs {
-				Colored := Bold
-				if desc.Hidden != 0 {
-					Colored = Red
-				}
-				// TODO Try https://github.com/olekukonko/tablewriter
-				fmt.Printf("%s\tfee %f hidden %d min_amount %f min_price %f max_price %f \n",
-					Colored(Bold(strings.ToUpper(name))), desc.Fee, desc.Hidden, desc.MinAmount, desc.MinPrice, desc.MaxPrice)
+				printInfoRecord(desc, name)
 			}
 		}
 	case "ticker":
@@ -76,7 +89,7 @@ func main() {
 		{
 			channel := make(chan TradesResponse)
 			go yobit.TradesLimited(*cmdTradesPair, *cmdTradesLimit, channel)
-			tradesResponse := <- channel
+			tradesResponse := <-channel
 			for ticker, trades := range tradesResponse.Trades {
 				fmt.Println(Bold(strings.ToUpper(ticker)))
 				printTrades(trades)
@@ -87,6 +100,15 @@ func main() {
 		panic("Unknown command " + command)
 	}
 
+}
+func printInfoRecord(desc PairInfo, name string) {
+	Colored := Bold
+	if desc.Hidden != 0 {
+		Colored = Red
+	}
+	// TODO Try https://github.com/olekukonko/tablewriter
+	fmt.Printf("%s\tfee %.3f%% hidden %d min_amount %f min_price %f max_price %f \n",
+		Colored(Bold(strings.ToUpper(name))), desc.Fee, desc.Hidden, desc.MinAmount, desc.MinPrice, desc.MaxPrice)
 }
 
 func printDepth(idx int, ask Order) (int, error) {
@@ -101,7 +123,7 @@ func printTicker(v Ticker, tickerName string) {
 		updated, Bold(strings.ToUpper(tickerName)), v.High, Green(v.Avg), v.Low, v.Buy, v.Sell, Green(v.Last), BgRed(spread), v.Vol, v.VolCur)
 }
 
-func printTrades(trades []Trade)  {
+func printTrades(trades []Trade) {
 	for _, trade := range trades {
 		tm := time.Unix(trade.Timestamp, 0).Format(time.Stamp)
 		Colored := BgGreen
@@ -111,6 +133,6 @@ func printTrades(trades []Trade)  {
 			tradeDirection = "Sell"
 		}
 
-		fmt.Printf("%s %s Price[%.8f] Amount[%.8f]\n", tm, Colored(tradeDirection), trade.Price, trade.Amount)
+		fmt.Printf("%s %s Price[%.8f] Amount[%.8f] \u21D0 %d\n", tm, Colored(tradeDirection), trade.Price, trade.Amount, trade.Tid)
 	}
 }

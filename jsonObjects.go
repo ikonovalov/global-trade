@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// ============ PUBLIC API OBJECTS =================
 /** ticker
 {
 	"ltc_btc":{
@@ -151,6 +152,7 @@ type Trade struct {
 type GetInfoResponse struct {
 	Success uint8         `json:"success"`
 	Data    GetInfoReturn `json:"return"`
+	Error   string        `json:"error"`
 }
 
 type GetInfoReturn struct {

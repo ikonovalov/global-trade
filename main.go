@@ -3,18 +3,16 @@ package main
 import (
 	"fmt"
 	. "github.com/logrusorgru/aurora"
-	"net/http"
 	"strings"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
 	"time"
-	"github.com/ikonovalov/go-cloudflare-scraper"
 )
 
 var (
 	app = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.")
 
-	cmdInfo = app.Command("info", "Show all listed tickers on the Yobit")
+	cmdInfo = app.Command("info", "Show all listed tickers on the Yobit").Default()
 
 	cmdTicker     = app.Command("ticker", "Client command: depth | ticker")
 	cmdTickerPair = cmdTicker.Arg("pairs", "Listing ticker name. eth_btc, xem_usd, and so on.").Default("btc_usd").String()
@@ -26,31 +24,15 @@ var (
 	cmdTrades      = app.Command("trades", "Last trades information for pairs")
 	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default("btc_usd").String()
 	cmdTradesLimit = cmdTrades.Arg("limit", "Trades output limit.").Default("100").Int()
+
+	cmdBalances = app.Command("balances", "Your current balance")
 )
 
 func main() {
 
 	kingpin.Version("0.1.0")
 
-	scraper, err := scraper.NewTransport(http.DefaultTransport)
-	if err != nil {
-		panic(err)
-	}
-
-	keys, err := loadApiKeys()
-	if err != nil {
-		panic(err)
-	}
-
-	yobit := Yobit{
-		client: &http.Client{
-			Transport: scraper,
-			Jar:       scraper.Cookies,
-		},
-		apiKeys: &keys,
-	}
-
-	yobit.GetInfo()
+	yobit := NewYobit()
 
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 	switch command {
@@ -94,6 +76,20 @@ func main() {
 				fmt.Println(Bold(strings.ToUpper(ticker)))
 				printTrades(trades)
 
+			}
+		}
+	case "balances":
+		{
+			channel := make(chan GetInfoResponse)
+			go yobit.GetInfo(channel)
+			getInfoRes := <-channel
+			funds := getInfoRes.Data.Funds
+			fmt.Println(Bold("Balances"))
+			for k, v := range funds {
+				if v == 0 {
+					continue
+				}
+				fmt.Printf("%-5s %f\n", strings.ToUpper(k), v)
 			}
 		}
 	default:

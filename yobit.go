@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"net/url"
 	"bytes"
+	"github.com/ikonovalov/go-cloudflare-scraper"
 )
 
 const (
@@ -17,6 +18,29 @@ const (
 	ApiVersion = "3"
 	ApiTrade   = "https://yobit.net/tapi/"
 )
+
+func NewYobit() (*Yobit) {
+	scraper, err := scraper.NewTransport(http.DefaultTransport)
+	if err != nil {
+		panic(err)
+	}
+
+	keys, err := loadApiKeys()
+	if err != nil {
+		panic(err)
+	}
+
+	yobit := Yobit{client: &http.Client{Transport: scraper, Jar: scraper.Cookies}, apiKeys: &keys}
+	yobit.PassCloudflare()
+	return &yobit
+}
+
+func (y *Yobit) PassCloudflare() (*Yobit) {
+	channel := make(chan TickerInfoResponse)
+	go y.Tickers24("btc_usd", channel)
+	<-channel
+	return y
+}
 
 func (y *Yobit) Tickers24(pairs string, ch chan TickerInfoResponse) {
 	ticker24Url := ApiBase + ApiVersion + "/ticker/" + pairs
@@ -75,13 +99,16 @@ func (y *Yobit) GetInfo(ch chan GetInfoResponse) {
 		log.Fatal(err)
 		panic(err)
 	}
+	if getInfoResp.Success == 0 {
+		panic(errors.New(getInfoResp.Error))
+	}
 	ch <- getInfoResp
 }
 
 func (y *Yobit) unmarshal(data [] byte, obj interface{}) error {
 	err := json.Unmarshal(data, obj)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Unmarshaling failed\n%s\n%s",string(data), err.Error()))
+		log.Fatal(fmt.Sprintf("Unmarshaling failed\n%s\n%s", string(data), err.Error()))
 	}
 	return err
 }

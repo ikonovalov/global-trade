@@ -20,7 +20,7 @@ const (
 )
 
 func NewYobit() (*Yobit) {
-	scraper, err := scraper.NewTransport(http.DefaultTransport)
+	cloudflare, err := scraper.NewTransport(http.DefaultTransport)
 	if err != nil {
 		panic(err)
 	}
@@ -30,7 +30,7 @@ func NewYobit() (*Yobit) {
 		panic(err)
 	}
 
-	yobit := Yobit{client: &http.Client{Transport: scraper, Jar: scraper.Cookies}, apiKeys: &keys}
+	yobit := Yobit{client: &http.Client{Transport: cloudflare, Jar: cloudflare.Cookies}, apiKeys: &keys}
 	yobit.PassCloudflare()
 	return &yobit
 }
@@ -49,7 +49,7 @@ func (y *Yobit) Tickers24(pairs string, ch chan TickerInfoResponse) {
 	var tickerResponse TickerInfoResponse
 	pTicker := &tickerResponse.Tickers
 
-	if err := y.unmarshal(response, pTicker); err != nil {
+	if err := unmarshal(response, pTicker); err != nil {
 		panic(err)
 	}
 	ch <- tickerResponse
@@ -59,7 +59,7 @@ func (y *Yobit) Info(ch chan InfoResponse) {
 	infoUrl := ApiBase + ApiVersion + "/info"
 	response := y.callPublic(infoUrl)
 	var infoResponse InfoResponse
-	if err := y.unmarshal(response, &infoResponse); err != nil {
+	if err := unmarshal(response, &infoResponse); err != nil {
 		log.Fatal(err)
 		panic(err)
 	}
@@ -74,7 +74,7 @@ func (y *Yobit) DepthLimited(pairs string, limit int, ch chan DepthResponse) {
 	limitedDepthUrl := fmt.Sprintf("%s/depth/%s?limit=%d", ApiBase+ApiVersion, pairs, limit)
 	response := y.callPublic(limitedDepthUrl)
 	var depthResponse DepthResponse
-	if err := y.unmarshal(response, &depthResponse.Orders); err != nil {
+	if err := unmarshal(response, &depthResponse.Orders); err != nil {
 		log.Fatal(err)
 		panic(err)
 	}
@@ -85,7 +85,7 @@ func (y *Yobit) TradesLimited(pairs string, limit int, ch chan TradesResponse) {
 	tradesLimitedUrl := fmt.Sprintf("%s/trades/%s?limit=%d", ApiBase+ApiVersion, pairs, limit)
 	response := y.callPublic(tradesLimitedUrl)
 	var tradesResponse TradesResponse
-	if err := y.unmarshal(response, &tradesResponse.Trades); err != nil {
+	if err := unmarshal(response, &tradesResponse.Trades); err != nil {
 		log.Fatal(err)
 		panic(err)
 	}
@@ -95,7 +95,7 @@ func (y *Yobit) TradesLimited(pairs string, limit int, ch chan TradesResponse) {
 func (y *Yobit) GetInfo(ch chan GetInfoResponse) {
 	response := y.callPrivate("getInfo")
 	var getInfoResp GetInfoResponse
-	if err := y.unmarshal(response, &getInfoResp); err != nil {
+	if err := unmarshal(response, &getInfoResp); err != nil {
 		log.Fatal(err)
 		panic(err)
 	}
@@ -105,7 +105,7 @@ func (y *Yobit) GetInfo(ch chan GetInfoResponse) {
 	ch <- getInfoResp
 }
 
-func (y *Yobit) unmarshal(data [] byte, obj interface{}) error {
+func unmarshal(data [] byte, obj interface{}) error {
 	err := json.Unmarshal(data, obj)
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Unmarshaling failed\n%s\n%s", string(data), err.Error()))

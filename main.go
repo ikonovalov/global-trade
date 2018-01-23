@@ -132,7 +132,7 @@ func printInfoRecord(desc PairInfo, name string) {
 		Colored = Red
 	}
 	// TODO Try https://github.com/olekukonko/tablewriter
-	fmt.Printf("%s\tfee %.3f%% hidden %d min_amount %f min_price %f max_price %f \n",
+	fmt.Printf("%-12sfee %1.3f%% hidden %d Min amount %8.8f Min/Max price [%8.8f/%8.8f]\n",
 		Colored(Bold(strings.ToUpper(name))), desc.Fee, desc.Hidden, desc.MinAmount, desc.MinPrice, desc.MaxPrice)
 }
 

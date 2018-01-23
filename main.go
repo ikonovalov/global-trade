@@ -1,3 +1,28 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2018 Igor Konovalov
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+
 package main
 
 import (
@@ -14,18 +39,18 @@ var (
 
 	cmdInfo = app.Command("info", "Show all listed tickers on the Yobit").Default()
 
-	cmdTicker     = app.Command("ticker", "Client command: depth | ticker")
+	cmdTicker     = app.Command("ticker", "Command provides statistic data for the last 24 hours.")
 	cmdTickerPair = cmdTicker.Arg("pairs", "Listing ticker name. eth_btc, xem_usd, and so on.").Default("btc_usd").String()
 
-	cmdDepth      = app.Command("depth", "ASK/BID depth")
+	cmdDepth      = app.Command("depth", "Command returns information about lists of active orders for selected pairs.")
 	cmdDepthPair  = cmdDepth.Arg("pairs", "eth_btc, xem_usd and so on.").Default("btc_usd").String()
 	cmdDepthLimit = cmdDepth.Arg("limit", "Depth output limit").Default("20").Int()
 
-	cmdTrades      = app.Command("trades", "Last trades information for pairs")
+	cmdTrades      = app.Command("trades", "Command returns information about the last transactions of selected pairs.")
 	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default("btc_usd").String()
 	cmdTradesLimit = cmdTrades.Arg("limit", "Trades output limit.").Default("100").Int()
 
-	cmdBalances = app.Command("balances", "Your current balance")
+	cmdBalances = app.Command("balances", "Command returns information about user's balances and priviledges of API-key as well as server time.")
 )
 
 func main() {

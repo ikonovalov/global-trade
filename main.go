@@ -83,20 +83,24 @@ func main() {
 			channel := make(chan GetInfoResponse)
 			go yobit.GetInfo(channel)
 			getInfoRes := <-channel
-			funds := getInfoRes.Data.Funds
-			fmt.Println(Bold("Balances"))
-			for k, v := range funds {
-				if v == 0 {
-					continue
-				}
-				fmt.Printf("%-5s %f\n", strings.ToUpper(k), v)
-			}
+			data := getInfoRes.Data
+			printFunds("Balances (include orders)", data.FundsIncludeOrders, data.ServerTime)
 		}
 	default:
 		panic("Unknown command " + command)
 	}
 
 }
+func printFunds(caption string, funds map[string]float64, updated int64) {
+	fmt.Printf("%s [%s]\n", Bold(caption), time.Unix(updated, 0).Format(time.Stamp))
+	for k, v := range funds {
+		if v == 0 {
+			continue
+		}
+		fmt.Printf("%-5s %.8f\n", Bold(strings.ToUpper(k)), v)
+	}
+}
+
 func printInfoRecord(desc PairInfo, name string) {
 	Colored := Bold
 	if desc.Hidden != 0 {

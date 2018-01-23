@@ -161,5 +161,5 @@ type GetInfoReturn struct {
 	FundsIncludeOrders map[string]float64 `json:"funds_incl_orders"`
 	TransactionCount   int                `json:"transaction_count"`
 	OpenOrders         int                `json:"open_orders"`
-	ServerTime         uint64             `json:"server_time"`
+	ServerTime         int64             `json:"server_time"`
 }

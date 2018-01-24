@@ -39,7 +39,7 @@ type ApiKeys struct {
 	Secret string `json:"secret"`
 }
 
-func (y *Yobit) GetNonce() (nonce uint64) {
+func getNonce() (nonce uint64) {
 	createNonceFileIfNotExists()
 	return readNonce()
 }

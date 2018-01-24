@@ -162,7 +162,7 @@ func (y *Yobit) callPublic(url string) ([]byte) {
 }
 
 func (y *Yobit) callPrivate(method string) ([]byte) {
-	nonce := y.GetNonce()
+	nonce := getNonce()
 	form := url.Values{
 		"method": {method},
 		"nonce":  {strconv.FormatUint(nonce, 10)},

@@ -29,34 +29,33 @@ import (
 	. "github.com/logrusorgru/aurora"
 	"strings"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"github.com/olekukonko/tablewriter"
 	"os"
-	"time"
 )
 
 var (
-	app = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.")
+	app = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.1.1")
 
-	cmdMarkets      = app.Command("markets", "Show all listed tickers on the Yobit").Default()
+	cmdMarkets      = app.Command("markets", "Show all listed tickers on the Yobit").Alias("m")
 	cmdInfoCurrency = cmdMarkets.Arg("cryptocurrency", "Show markets only for specified currency: btc, eth, usd and so on.").Default("").String()
 
-	cmdTicker     = app.Command("ticker", "Command provides statistic data for the last 24 hours.")
+	cmdTicker     = app.Command("ticker", "Command provides statistic data for the last 24 hours.").Alias("tc")
 	cmdTickerPair = cmdTicker.Arg("pairs", "Listing ticker name. eth_btc, xem_usd, and so on.").Default("btc_usd").String()
 
-	cmdDepth      = app.Command("depth", "Command returns information about lists of active orders for selected pairs.")
+	cmdDepth      = app.Command("depth", "Command returns information about lists of active orders for selected pairs.").Alias("dp")
 	cmdDepthPair  = cmdDepth.Arg("pairs", "eth_btc, xem_usd and so on.").Default("btc_usd").String()
 	cmdDepthLimit = cmdDepth.Arg("limit", "Depth output limit").Default("20").Int()
 
-	cmdTrades      = app.Command("trades", "Command returns information about the last transactions of selected pairs.")
+	cmdTrades      = app.Command("trades", "Command returns information about the last transactions of selected pairs.").Alias("tr")
 	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default("btc_usd").String()
 	cmdTradesLimit = cmdTrades.Arg("limit", "Trades output limit.").Default("100").Int()
 
-	cmdBalances = app.Command("balances", "Command returns information about user's balances and priviledges of API-key as well as server time.")
+	cmdWallets = app.Command("wallets", "Command returns information about user's balances and priviledges of API-key as well as server time.").Alias("bl")
+
+	cmdActiveOrders = app.Command("active-orders", "Show active orders").Alias("ao")
+	cmdActiveOrderPair = cmdActiveOrders.Arg("pair", "doge_usd...").Required().String()
 )
 
 func main() {
-
-	kingpin.Version("0.1.0")
 
 	yobit := NewYobit()
 
@@ -85,10 +84,11 @@ func main() {
 			channel := make(chan DepthResponse)
 			go yobit.DepthLimited(strings.ToLower(*cmdDepthPair), *cmdDepthLimit, channel)
 			depthResponse := <-channel
-			orders := depthResponse.Orders[*cmdDepthPair]
+			orders := depthResponse.Offers[*cmdDepthPair]
 			fmt.Println(Bold(strings.ToUpper(*cmdDepthPair)))
+			fmt.Println(Bold("ASK"))
 			for idx, ask := range orders.Asks {
-				printDepth(idx, ask)
+				printDepth(idx, ask) // TODO Prints BIDS and add table output
 			}
 		}
 	case "trades":
@@ -102,7 +102,7 @@ func main() {
 
 			}
 		}
-	case "balances":
+	case "wallets":
 		{
 			channel := make(chan GetInfoResponse)
 			go yobit.GetInfo(channel)
@@ -110,77 +110,15 @@ func main() {
 			data := getInfoRes.Data
 			printFunds("Balances (include orders)", data.FundsIncludeOrders, data.ServerTime)
 		}
+	case "active-orders":
+		{
+			channel := make(chan ActiveOrdersResponse)
+			go yobit.ActiveOrders("xem_eth", channel)
+			activeOrders := <-channel
+			fmt.Println(activeOrders)
+		}
 	default:
 		panic("Unknown command " + command)
 	}
 
-}
-func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Market", "Hidden", "Min amount", "Min price", "Max price"})
-	bold := tablewriter.Colors{tablewriter.Bold}
-	norm := tablewriter.Colors{0}
-	table.SetHeaderColor(bold, bold, bold, bold, bold)
-	table.SetColumnColor(bold, norm, norm, norm, norm)
-
-	currencyFilter = strings.ToUpper(currencyFilter)
-	for name, desc := range infoResponse.Pairs {
-		hidden := "NO"
-		if desc.Hidden == 1 {
-			hidden = "YES"
-		}
-		if currencyName := strings.ToUpper(name); currencyFilter == "" || strings.Contains(currencyName, currencyFilter) {
-			table.Append([]string{
-				currencyName,
-				fmt.Sprintf("%s", hidden),
-				fmt.Sprintf("%f", desc.MinAmount),
-				fmt.Sprintf("%f", desc.MinPrice),
-				fmt.Sprintf("%f", desc.MaxPrice),
-			})
-		}
-	}
-	table.Render()
-}
-
-func printFunds(caption string, funds map[string]float64, updated int64) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Coin", "Hold"})
-	bold := tablewriter.Colors{tablewriter.Bold}
-	norm := tablewriter.Colors{0}
-	table.SetHeaderColor(bold, bold)
-	table.SetColumnColor(bold, norm)
-	fmt.Printf("%s [%s]\n", Bold(caption), time.Unix(updated, 0).Format(time.Stamp))
-	for k, v := range funds {
-		if v == 0 {
-			continue
-		}
-		table.Append([]string{strings.ToUpper(k), fmt.Sprintf("%.8f", v)})
-	}
-	table.Render()
-}
-
-func printDepth(idx int, ask Order) (int, error) {
-	return fmt.Printf("#%d %.8f <- %.8f\n", idx+1, ask.Price, ask.Quantity)
-}
-
-func printTicker(v Ticker, tickerName string) {
-	spread := v.Sell - v.Buy
-	updated := time.Unix(v.Updated, 0).Format(time.Stamp)
-	fmt.Printf(
-		"%s %-9s H/A/L [%.8f/%.8f/%.8f] Buy[%.8f] Sell[%.8f] Last[%.8f] Spread[%.8f] Volume[%.8f] Current Volume[%.8f] \n",
-		updated, Bold(strings.ToUpper(tickerName)), v.High, Green(v.Avg), v.Low, v.Buy, v.Sell, Green(v.Last), BgRed(spread), v.Vol, v.VolCur)
-}
-
-func printTrades(trades []Trade) {
-	for _, trade := range trades {
-		tm := time.Unix(trade.Timestamp, 0).Format(time.Stamp)
-		Colored := BgGreen
-		tradeDirection := "Buy "
-		if trade.Type == "ask" {
-			Colored = BgRed
-			tradeDirection = "Sell"
-		}
-
-		fmt.Printf("%s %s Price[%.8f] Amount[%.8f] \u21D0 %d\n", tm, Colored(tradeDirection), trade.Price, trade.Amount, trade.Tid)
-	}
 }

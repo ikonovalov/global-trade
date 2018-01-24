@@ -98,7 +98,7 @@ func (y *Yobit) DepthLimited(pairs string, limit int, ch chan<- DepthResponse) {
 	limitedDepthUrl := fmt.Sprintf("%s/depth/%s?limit=%d", ApiBase+ApiVersion, pairs, limit)
 	response := y.callPublic(limitedDepthUrl)
 	var depthResponse DepthResponse
-	if err := unmarshal(response, &depthResponse.Orders); err != nil {
+	if err := unmarshal(response, &depthResponse.Offers); err != nil {
 		log.Fatal(err)
 		panic(err)
 	}
@@ -127,6 +127,19 @@ func (y *Yobit) GetInfo(ch chan<- GetInfoResponse) {
 		panic(errors.New(getInfoResp.Error))
 	}
 	ch <- getInfoResp
+}
+
+func (y *Yobit) ActiveOrders(pair string, ch chan<- ActiveOrdersResponse) {
+	response := y.callPrivate("ActiveOrders", CallArg{"pair", pair})
+	var activeOrders ActiveOrdersResponse
+	if err := unmarshal(response, &activeOrders); err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
+	if activeOrders.Success == 0 {
+		panic(errors.New(activeOrders.Error))
+	}
+	ch <- activeOrders
 }
 
 func unmarshal(data [] byte, obj interface{}) error {
@@ -161,11 +174,19 @@ func (y *Yobit) callPublic(url string) ([]byte) {
 	return y.query(req)
 }
 
-func (y *Yobit) callPrivate(method string) ([]byte) {
+type CallArg struct {
+	name  string
+	value string
+}
+
+func (y *Yobit) callPrivate(method string, args ...CallArg) ([]byte) {
 	nonce := getNonce()
 	form := url.Values{
 		"method": {method},
 		"nonce":  {strconv.FormatUint(nonce, 10)},
+	}
+	for _, arg := range args {
+		form.Add(arg.name, arg.value)
 	}
 	encode := form.Encode()
 	signature := signHmacSha512([]byte(y.apiKeys.Secret), []byte(encode))

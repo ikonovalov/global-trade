@@ -113,20 +113,20 @@ type PairInfo struct {
 }
  */
 type DepthResponse struct {
-	Orders map[string]Orders
+	Offers map[string]Offers
 }
 
-type Orders struct {
-	Asks []Order `json:"asks"`
-	Bids []Order `json:"bids"`
+type Offers struct {
+	Asks []Offer `json:"asks"`
+	Bids []Offer `json:"bids"`
 }
 
-type Order struct {
+type Offer struct {
 	Price    float64
 	Quantity float64
 }
 
-func (n *Order) UnmarshalJSON(buf []byte) error {
+func (n *Offer) UnmarshalJSON(buf []byte) error {
 	tmp := []interface{}{&n.Price, &n.Quantity}
 	wantLen := len(tmp)
 	if err := json.Unmarshal(buf, &tmp); err != nil {
@@ -185,5 +185,27 @@ type GetInfoReturn struct {
 	FundsIncludeOrders map[string]float64 `json:"funds_incl_orders"`
 	TransactionCount   int                `json:"transaction_count"`
 	OpenOrders         int                `json:"open_orders"`
-	ServerTime         int64             `json:"server_time"`
+	ServerTime         int64              `json:"server_time"`
+}
+
+type ActiveOrdersResponse struct {
+	Success uint8            `json:"success"`
+	Orders  map[string]Order `json:"return"`
+	Error   string           `json:"error"`
+}
+
+type OrderInfoResponse struct {
+	Success uint8            `json:"success"`
+	Orders  map[string]Order `json:"return"`
+	Error   string           `json:"error"`
+}
+
+type Order struct {
+	Pair        string  `json:"pair"`
+	Type        string  `json:"type"`
+	StartAmount float64 `json:"start_amount"`
+	Amount      float64 `json:"amount"`
+	Rate        float64 `json:"rate"`
+	Created     string   `json:"timestamp_created"`
+	Status      uint8   `json:"status"`
 }

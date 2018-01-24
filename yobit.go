@@ -66,7 +66,7 @@ func (y *Yobit) PassCloudflare() (*Yobit) {
 	return y
 }
 
-func (y *Yobit) Tickers24(pairs string, ch chan TickerInfoResponse) {
+func (y *Yobit) Tickers24(pairs string, ch chan<- TickerInfoResponse) {
 	ticker24Url := ApiBase + ApiVersion + "/ticker/" + pairs
 	response := y.callPublic(ticker24Url)
 
@@ -79,7 +79,7 @@ func (y *Yobit) Tickers24(pairs string, ch chan TickerInfoResponse) {
 	ch <- tickerResponse
 }
 
-func (y *Yobit) Info(ch chan InfoResponse) {
+func (y *Yobit) Info(ch chan<- InfoResponse) {
 	infoUrl := ApiBase + ApiVersion + "/info"
 	response := y.callPublic(infoUrl)
 	var infoResponse InfoResponse
@@ -90,11 +90,11 @@ func (y *Yobit) Info(ch chan InfoResponse) {
 	ch <- infoResponse
 }
 
-func (y *Yobit) Depth(pairs string, ch chan DepthResponse) {
+func (y *Yobit) Depth(pairs string, ch chan<- DepthResponse) {
 	y.DepthLimited(pairs, 150, ch)
 }
 
-func (y *Yobit) DepthLimited(pairs string, limit int, ch chan DepthResponse) {
+func (y *Yobit) DepthLimited(pairs string, limit int, ch chan<- DepthResponse) {
 	limitedDepthUrl := fmt.Sprintf("%s/depth/%s?limit=%d", ApiBase+ApiVersion, pairs, limit)
 	response := y.callPublic(limitedDepthUrl)
 	var depthResponse DepthResponse
@@ -105,7 +105,7 @@ func (y *Yobit) DepthLimited(pairs string, limit int, ch chan DepthResponse) {
 	ch <- depthResponse
 }
 
-func (y *Yobit) TradesLimited(pairs string, limit int, ch chan TradesResponse) {
+func (y *Yobit) TradesLimited(pairs string, limit int, ch chan<- TradesResponse) {
 	tradesLimitedUrl := fmt.Sprintf("%s/trades/%s?limit=%d", ApiBase+ApiVersion, pairs, limit)
 	response := y.callPublic(tradesLimitedUrl)
 	var tradesResponse TradesResponse
@@ -116,7 +116,7 @@ func (y *Yobit) TradesLimited(pairs string, limit int, ch chan TradesResponse) {
 	ch <- tradesResponse
 }
 
-func (y *Yobit) GetInfo(ch chan GetInfoResponse) {
+func (y *Yobit) GetInfo(ch chan<- GetInfoResponse) {
 	response := y.callPrivate("getInfo")
 	var getInfoResp GetInfoResponse
 	if err := unmarshal(response, &getInfoResp); err != nil {

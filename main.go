@@ -22,7 +22,6 @@
  * SOFTWARE.
  */
 
-
 package main
 
 import (
@@ -30,6 +29,7 @@ import (
 	. "github.com/logrusorgru/aurora"
 	"strings"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"github.com/olekukonko/tablewriter"
 	"os"
 	"time"
 )
@@ -37,7 +37,8 @@ import (
 var (
 	app = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.")
 
-	cmdInfo = app.Command("info", "Show all listed tickers on the Yobit").Default()
+	cmdMarkets      = app.Command("markets", "Show all listed tickers on the Yobit").Default()
+	cmdInfoCurrency = cmdMarkets.Arg("cryptocurrency", "Show markets only for specified currency: btc, eth, usd and so on.").Default("").String()
 
 	cmdTicker     = app.Command("ticker", "Command provides statistic data for the last 24 hours.")
 	cmdTickerPair = cmdTicker.Arg("pairs", "Listing ticker name. eth_btc, xem_usd, and so on.").Default("btc_usd").String()
@@ -61,20 +62,18 @@ func main() {
 
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 	switch command {
-	case "info":
+	case "markets":
 		{
 			channel := make(chan InfoResponse)
 			go yobit.Info(channel)
 			infoResponse := <-channel
-
-			for name, desc := range infoResponse.Pairs {
-				printInfoRecord(desc, name)
-			}
+			printInfoRecords(infoResponse, *cmdInfoCurrency)
+			fmt.Printf("\nTotal markets %d\n", len(infoResponse.Pairs))
 		}
 	case "ticker":
 		{
 			channel := make(chan TickerInfoResponse)
-			go yobit.Tickers24(*cmdTickerPair, channel)
+			go yobit.Tickers24(strings.ToLower(*cmdTickerPair), channel)
 			tickerResponse := <-channel
 
 			for ticker, v := range tickerResponse.Tickers {
@@ -84,7 +83,7 @@ func main() {
 	case "depth":
 		{
 			channel := make(chan DepthResponse)
-			go yobit.DepthLimited(*cmdDepthPair, *cmdDepthLimit, channel)
+			go yobit.DepthLimited(strings.ToLower(*cmdDepthPair), *cmdDepthLimit, channel)
 			depthResponse := <-channel
 			orders := depthResponse.Orders[*cmdDepthPair]
 			fmt.Println(Bold(strings.ToUpper(*cmdDepthPair)))
@@ -95,7 +94,7 @@ func main() {
 	case "trades":
 		{
 			channel := make(chan TradesResponse)
-			go yobit.TradesLimited(*cmdTradesPair, *cmdTradesLimit, channel)
+			go yobit.TradesLimited(strings.ToLower(*cmdTradesPair), *cmdTradesLimit, channel)
 			tradesResponse := <-channel
 			for ticker, trades := range tradesResponse.Trades {
 				fmt.Println(Bold(strings.ToUpper(ticker)))
@@ -116,24 +115,48 @@ func main() {
 	}
 
 }
+func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Market", "Hidden", "Min amount", "Min price", "Max price"})
+	bold := tablewriter.Colors{tablewriter.Bold}
+	norm := tablewriter.Colors{0}
+	table.SetHeaderColor(bold, bold, bold, bold, bold)
+	table.SetColumnColor(bold, norm, norm, norm, norm)
+
+	currencyFilter = strings.ToUpper(currencyFilter)
+	for name, desc := range infoResponse.Pairs {
+		hidden := "NO"
+		if desc.Hidden == 1 {
+			hidden = "YES"
+		}
+		if currencyName := strings.ToUpper(name); currencyFilter == "" || strings.Contains(currencyName, currencyFilter) {
+			table.Append([]string{
+				currencyName,
+				fmt.Sprintf("%s", hidden),
+				fmt.Sprintf("%f", desc.MinAmount),
+				fmt.Sprintf("%f", desc.MinPrice),
+				fmt.Sprintf("%f", desc.MaxPrice),
+			})
+		}
+	}
+	table.Render()
+}
+
 func printFunds(caption string, funds map[string]float64, updated int64) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Coin", "Hold"})
+	bold := tablewriter.Colors{tablewriter.Bold}
+	norm := tablewriter.Colors{0}
+	table.SetHeaderColor(bold, bold)
+	table.SetColumnColor(bold, norm)
 	fmt.Printf("%s [%s]\n", Bold(caption), time.Unix(updated, 0).Format(time.Stamp))
 	for k, v := range funds {
 		if v == 0 {
 			continue
 		}
-		fmt.Printf("%-5s %.8f\n", Bold(strings.ToUpper(k)), v)
+		table.Append([]string{strings.ToUpper(k), fmt.Sprintf("%.8f", v)})
 	}
-}
-
-func printInfoRecord(desc PairInfo, name string) {
-	Colored := Bold
-	if desc.Hidden != 0 {
-		Colored = Red
-	}
-	// TODO Try https://github.com/olekukonko/tablewriter
-	fmt.Printf("%-12sfee %1.3f%% hidden %d Min amount %8.8f Min/Max price [%8.8f/%8.8f]\n",
-		Colored(Bold(strings.ToUpper(name))), desc.Fee, desc.Hidden, desc.MinAmount, desc.MinPrice, desc.MaxPrice)
+	table.Render()
 }
 
 func printDepth(idx int, ask Order) (int, error) {

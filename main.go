@@ -64,6 +64,16 @@ var (
 	cmdTradeRate = cmdTrade.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
 	cmdTradeAmount = cmdTrade.Arg("amount", "Exchange rate for buying or selling").Required().Float64()
 
+	cmdBuy = app.Command("buy", "(b) Buy on stock exchange").Alias("b")
+	cmdBuyPair = cmdBuy.Arg("pair", "Pair").Required().String()
+	cmdBuyRate = cmdBuy.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
+	cmdBuyAmount = cmdBuy.Arg("amount", "Exchange rate for buying or selling").Required().Float64()
+
+	cmdSell = app.Command("sell", "(s) Sell on stock exchange").Alias("s")
+	cmdSellPair = cmdSell.Arg("pair", "Pair").Required().String()
+	cmdSellRate = cmdSell.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
+	cmdSellAmount = cmdSell.Arg("amount", "Exchange rate for buying or selling").Required().Float64()
+
 	cmdCancelOrder = app.Command("cancel", "(c) Cancells the chosen order").Alias("c")
 	cmdCancelOrderOrderId = cmdCancelOrder.Arg("order_id", "Order ID").Required().String()
 )
@@ -142,6 +152,20 @@ func main() {
 		{
 			channel := make(chan TradeResponse)
 			go yobit.Trade(*cmdTradePair, *cmdTradeType, *cmdTradeRate, *cmdTradeAmount, channel)
+			trade := <- channel
+			fmt.Printf("Order %d created\n", trade.Result.OrderId)
+		}
+	case "buy":
+		{
+			channel := make(chan TradeResponse)
+			go yobit.Trade(*cmdBuyPair, "buy", *cmdBuyRate, *cmdBuyAmount, channel)
+			trade := <- channel
+			fmt.Printf("Order %d created\n", trade.Result.OrderId)
+		}
+	case "sell":
+		{
+			channel := make(chan TradeResponse)
+			go yobit.Trade(*cmdSellPair, "sell", *cmdSellRate, *cmdSellAmount, channel)
 			trade := <- channel
 			fmt.Printf("Order %d created\n", trade.Result.OrderId)
 		}

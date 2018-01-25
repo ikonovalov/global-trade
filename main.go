@@ -63,6 +63,9 @@ var (
 	cmdTradeType = cmdTrade.Arg("type", "Transaction type: sell or buy").Required().String()
 	cmdTradeRate = cmdTrade.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
 	cmdTradeAmount = cmdTrade.Arg("amount", "Exchange rate for buying or selling").Required().Float64()
+
+	cmdCancelOrder = app.Command("cancel", "(c) Cancells the chosen order").Alias("c")
+	cmdCancelOrderOrderId = cmdCancelOrder.Arg("order_id", "Order ID").Required().String()
 )
 
 func main() {
@@ -140,7 +143,14 @@ func main() {
 			channel := make(chan TradeResponse)
 			go yobit.Trade(*cmdTradePair, *cmdTradeType, *cmdTradeRate, *cmdTradeAmount, channel)
 			trade := <- channel
-			fmt.Printf("OrderId: %s", trade.Result.OrderId)
+			fmt.Printf("Order %d created\n", trade.Result.OrderId)
+		}
+	case "cancel":
+		{
+			channel := make(chan CancelOrderRespose)
+			go yobit.CancelOrder(*cmdCancelOrderOrderId, channel)
+			cancelResult := <-channel
+			fmt.Printf("Order %d candeled\n", cancelResult.Result.OrderId)
 		}
 	default:
 		panic("Unknown command " + command)

@@ -175,8 +175,17 @@ func (y *Yobit) Trade(pair string, tradeType string, rate float64, amount float6
 	ch <- tradeResponse
 }
 
-func (y *Yobit) CancelOrder(orderId string) {
-
+func (y *Yobit) CancelOrder(orderId string , ch chan CancelOrderRespose) {
+	response := y.callPrivate("CancelOrder", CallArg{"order_id", orderId})
+	var cancelResponse CancelOrderRespose
+	if err := unmarshal(response, &cancelResponse); err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
+	if cancelResponse.Success == 0 {
+		panic(errors.New(cancelResponse.Error))
+	}
+	ch <- cancelResponse
 }
 
 func (y *Yobit) TradeHistory(pair string, ch chan<- TradeHistoryResponse) {

@@ -244,7 +244,7 @@ type TradeResponse struct {
 type TradeResult struct {
 	Received float64            `json:"received"`
 	Remains  float64            `json:"remains"`
-	OrderId  string             `json:"order_id"`
+	OrderId  uint64             `json:"order_id"`
 	Funds    map[string]float64 `json:"funds"`
 }
 
@@ -255,6 +255,6 @@ type CancelOrderRespose struct {
 }
 
 type CancelResult struct {
-	OrderId string             `json:"order_id"`
+	OrderId uint64             `json:"order_id"`
 	Funds   map[string]float64 `json:"funds"`
 }

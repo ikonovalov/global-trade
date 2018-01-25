@@ -116,6 +116,8 @@ func (y *Yobit) TradesLimited(pairs string, limit int, ch chan<- TradesResponse)
 	ch <- tradesResponse
 }
 
+// TRADE API =================================================================================
+
 func (y *Yobit) GetInfo(ch chan<- GetInfoResponse) {
 	response := y.callPrivate("getInfo")
 	var getInfoResp GetInfoResponse
@@ -140,6 +142,57 @@ func (y *Yobit) ActiveOrders(pair string, ch chan<- ActiveOrdersResponse) {
 		panic(errors.New(activeOrders.Error))
 	}
 	ch <- activeOrders
+}
+
+func (y *Yobit) OrderInfo(orderId string, ch chan<- OrderInfoResponse) {
+	response := y.callPrivate("OrderInfo", CallArg{"order_id", orderId})
+	var orderInfo OrderInfoResponse
+	if err := unmarshal(response, &orderInfo); err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
+	if orderInfo.Success == 0 {
+		panic(errors.New(orderInfo.Error))
+	}
+	ch <- orderInfo
+}
+
+func (y *Yobit) Trade(pair string, tradeType string, rate float64, amount float64, ch chan TradeResponse) {
+	response := y.callPrivate("Trade",
+		CallArg{"pair", pair},
+		CallArg{"type", tradeType},
+		CallArg{"rate", strconv.FormatFloat(rate, 'f', 8, 64)},
+		CallArg{"amount", strconv.FormatFloat(amount, 'f', 8, 64)},
+	)
+	var tradeResponse TradeResponse
+	if err := unmarshal(response, &tradeResponse); err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
+	if tradeResponse.Success == 0 {
+		panic(errors.New(tradeResponse.Error))
+	}
+	ch <- tradeResponse
+}
+
+func (y *Yobit) CancelOrder(orderId string) {
+
+}
+
+func (y *Yobit) TradeHistory(pair string, ch chan<- TradeHistoryResponse) {
+	response := y.callPrivate("TradeHistory",
+		CallArg{"pair", pair},
+		CallArg{"count", "1000"},
+	)
+	var tradeHistory TradeHistoryResponse
+	if err := unmarshal(response, &tradeHistory); err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
+	if tradeHistory.Success == 0 {
+		panic(errors.New(tradeHistory.Error))
+	}
+	ch <- tradeHistory
 }
 
 func unmarshal(data [] byte, obj interface{}) error {
@@ -175,8 +228,7 @@ func (y *Yobit) callPublic(url string) ([]byte) {
 }
 
 type CallArg struct {
-	name  string
-	value string
+	name, value string
 }
 
 func (y *Yobit) callPrivate(method string, args ...CallArg) ([]byte) {
@@ -194,7 +246,7 @@ func (y *Yobit) callPrivate(method string, args ...CallArg) ([]byte) {
 	req, err := http.NewRequest("POST", ApiTrade, body)
 
 	if err != nil {
-		log.Fatal("NewRequest: ", err)
+		log.Fatal("callPrivate: ", err)
 		panic(err)
 	}
 

@@ -35,24 +35,34 @@ import (
 var (
 	app = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.1.1")
 
-	cmdMarkets      = app.Command("markets", "Show all listed tickers on the Yobit").Alias("m")
+	cmdMarkets      = app.Command("markets", "(m) Show all listed tickers on the Yobit").Alias("m")
 	cmdInfoCurrency = cmdMarkets.Arg("cryptocurrency", "Show markets only for specified currency: btc, eth, usd and so on.").Default("").String()
 
-	cmdTicker     = app.Command("ticker", "Command provides statistic data for the last 24 hours.").Alias("tc")
+	cmdTicker     = app.Command("ticker", "(tc) Command provides statistic data for the last 24 hours.").Alias("tc")
 	cmdTickerPair = cmdTicker.Arg("pairs", "Listing ticker name. eth_btc, xem_usd, and so on.").Default("btc_usd").String()
 
-	cmdDepth      = app.Command("depth", "Command returns information about lists of active orders for selected pairs.").Alias("dp")
+	cmdDepth      = app.Command("depth", "(d) Command returns information about lists of active orders for selected pairs.").Alias("d")
 	cmdDepthPair  = cmdDepth.Arg("pairs", "eth_btc, xem_usd and so on.").Default("btc_usd").String()
 	cmdDepthLimit = cmdDepth.Arg("limit", "Depth output limit").Default("20").Int()
 
-	cmdTrades      = app.Command("trades", "Command returns information about the last transactions of selected pairs.").Alias("tr")
+	cmdTrades      = app.Command("trades", "(tr) Command returns information about the last transactions of selected pairs.").Alias("tr")
 	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default("btc_usd").String()
 	cmdTradesLimit = cmdTrades.Arg("limit", "Trades output limit.").Default("100").Int()
 
-	cmdWallets = app.Command("wallets", "Command returns information about user's balances and priviledges of API-key as well as server time.").Alias("bl")
+	cmdWallets = app.Command("wallets", "(w) Command returns information about user's balances and priviledges of API-key as well as server time.").Alias("w")
+	cmdWalletsCurrency = cmdWallets.Arg("currency", "Concrete currency").Default("all").String()
 
-	cmdActiveOrders = app.Command("active-orders", "Show active orders").Alias("ao")
+	cmdActiveOrders    = app.Command("active-orders", "(ao) Show active orders").Alias("ao")
 	cmdActiveOrderPair = cmdActiveOrders.Arg("pair", "doge_usd...").Required().String()
+
+	cmdTradeHistory     = app.Command("trade-history", "(th) Trade history").Alias("th")
+	cmdTradeHistoryPair = cmdTradeHistory.Arg("pair", "doge_usd...").Required().String()
+
+	cmdTrade     = app.Command("trade", "(t) Creating new orders for stock exchange trading").Alias("t")
+	cmdTradePair = cmdTrade.Arg("pair", "Pair").Required().String()
+	cmdTradeType = cmdTrade.Arg("type", "Transaction type: sell or buy").Required().String()
+	cmdTradeRate = cmdTrade.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
+	cmdTradeAmount = cmdTrade.Arg("amount", "Exchange rate for buying or selling").Required().Float64()
 )
 
 func main() {
@@ -108,14 +118,29 @@ func main() {
 			go yobit.GetInfo(channel)
 			getInfoRes := <-channel
 			data := getInfoRes.Data
-			printFunds("Balances (include orders)", data.FundsIncludeOrders, data.ServerTime)
+			printWallets("Balances (include orders)", *cmdWalletsCurrency, data.FundsIncludeOrders, data.ServerTime)
 		}
 	case "active-orders":
 		{
 			channel := make(chan ActiveOrdersResponse)
-			go yobit.ActiveOrders("xem_eth", channel)
+			go yobit.ActiveOrders(*cmdActiveOrderPair, channel)
 			activeOrders := <-channel
-			fmt.Println(activeOrders)
+			printActiveOrders(activeOrders)
+
+		}
+	case "trade-history":
+		{
+			channel := make(chan TradeHistoryResponse)
+			go yobit.TradeHistory(*cmdTradeHistoryPair, channel)
+			history := <-channel
+			fmt.Println(history)
+		}
+	case "trade":
+		{
+			channel := make(chan TradeResponse)
+			go yobit.Trade(*cmdTradePair, *cmdTradeType, *cmdTradeRate, *cmdTradeAmount, channel)
+			trade := <- channel
+			fmt.Printf("OrderId: %s", trade.Result.OrderId)
 		}
 	default:
 		panic("Unknown command " + command)

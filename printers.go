@@ -31,6 +31,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"os"
 	"time"
+	"strconv"
 )
 
 func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
@@ -60,7 +61,7 @@ func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
 	table.Render()
 }
 
-func printFunds(caption string, funds map[string]float64, updated int64) {
+func printWallets(caption string, currencyFilter string, funds map[string]float64, updated int64) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Coin", "Hold"})
 	bold := tablewriter.Colors{tablewriter.Bold}
@@ -69,7 +70,7 @@ func printFunds(caption string, funds map[string]float64, updated int64) {
 	table.SetColumnColor(bold, norm)
 	fmt.Printf("%s [%s]\n", Bold(caption), time.Unix(updated, 0).Format(time.Stamp))
 	for k, v := range funds {
-		if v == 0 {
+		if v == 0 || (currencyFilter != "all" && k != currencyFilter) {
 			continue
 		}
 		table.Append([]string{strings.ToUpper(k), fmt.Sprintf("%.8f", v)})
@@ -100,5 +101,13 @@ func printTrades(trades []Trade) {
 		}
 
 		fmt.Printf("%s %s Price[%.8f] Amount[%.8f] \u21D0 %d\n", tm, Bold(Colored(tradeDirection)), trade.Price, trade.Amount, trade.Tid)
+	}
+}
+
+func printActiveOrders(activeOrders ActiveOrdersResponse) {
+	for ordId, ord := range activeOrders.Orders {
+		created, _ := strconv.ParseInt(ord.Created, 10, 64)
+		fmt.Printf("%s ID[%s] %s amount: %.8f rate: %.8f\n",
+			time.Unix(created, 0).Format(time.Stamp), ordId, strings.ToUpper(ord.Type), ord.Amount, ord.Rate)
 	}
 }

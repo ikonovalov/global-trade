@@ -189,23 +189,72 @@ type GetInfoReturn struct {
 }
 
 type ActiveOrdersResponse struct {
-	Success uint8            `json:"success"`
-	Orders  map[string]Order `json:"return"`
-	Error   string           `json:"error"`
+	Success uint8                  `json:"success"`
+	Orders  map[string]ActiveOrder `json:"return"`
+	Error   string                 `json:"error"`
+}
+
+type ActiveOrder struct {
+	Pair    string  `json:"pair"`
+	Type    string  `json:"type"`
+	Amount  float64 `json:"amount"`
+	Rate    float64 `json:"rate"`
+	Created string  `json:"timestamp_created"`
+	Status  uint8   `json:"status"`
 }
 
 type OrderInfoResponse struct {
-	Success uint8            `json:"success"`
-	Orders  map[string]Order `json:"return"`
-	Error   string           `json:"error"`
+	Success uint8                `json:"success"`
+	Orders  map[string]OrderInfo `json:"return"`
+	Error   string               `json:"error"`
 }
 
-type Order struct {
+type OrderInfo struct {
 	Pair        string  `json:"pair"`
 	Type        string  `json:"type"`
 	StartAmount float64 `json:"start_amount"`
 	Amount      float64 `json:"amount"`
 	Rate        float64 `json:"rate"`
-	Created     string   `json:"timestamp_created"`
+	Created     string  `json:"timestamp_created"`
 	Status      uint8   `json:"status"`
+}
+
+type TradeHistoryResponse struct {
+	Success uint8                    `json:"success"`
+	Error   string                   `json:"error"`
+	Orders  map[string]HistoricOrder `json:"return"`
+}
+
+type HistoricOrder struct {
+	Pair        string  `json:"pair"`
+	Type        string  `json:"type"`
+	Amount      float64 `json:"amount"`
+	Rate        float64 `json:"rate"`
+	OrderId     uint64  `json:"order_id"`
+	IsYourOrder uint8   `json:"is_your_order"`
+	Timestamp   uint64  `json:"timestamp"`
+}
+
+type TradeResponse struct {
+	Success uint8       `json:"success"`
+	Error   string      `json:"error"`
+	Result  TradeResult `json:"return"`
+}
+
+type TradeResult struct {
+	Received float64            `json:"received"`
+	Remains  float64            `json:"remains"`
+	OrderId  string             `json:"order_id"`
+	Funds    map[string]float64 `json:"funds"`
+}
+
+type CancelOrderRespose struct {
+	Success uint8        `json:"success"`
+	Error   string       `json:"error"`
+	Result  CancelResult `json:"return"`
+}
+
+type CancelResult struct {
+	OrderId string             `json:"order_id"`
+	Funds   map[string]float64 `json:"funds"`
 }

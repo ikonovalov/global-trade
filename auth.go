@@ -56,6 +56,13 @@ func readNonce() uint64 {
 	return nonce
 }
 
+func createKeysFile() {
+	data, _ :=json.Marshal(ApiKeys{})
+	if err := ioutil.WriteFile("keys", data, 0644); err != nil {
+		panic(err)
+	}
+}
+
 func writeNonce(data []byte) {
 	if err := ioutil.WriteFile("nonce", data, 0644); err != nil {
 		panic(err)

@@ -35,6 +35,8 @@ import (
 var (
 	app = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.1.1")
 
+	cmdInit = app.Command("init", "Initialize nonce and keys container")
+
 	cmdMarkets      = app.Command("markets", "(m) Show all listed tickers on the Yobit").Alias("m")
 	cmdInfoCurrency = cmdMarkets.Arg("cryptocurrency", "Show markets only for specified currency: btc, eth, usd and so on.").Default("").String()
 
@@ -84,6 +86,10 @@ func main() {
 
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 	switch command {
+	case "init":
+		{
+			createKeysFile()
+		}
 	case "markets":
 		{
 			channel := make(chan InfoResponse)

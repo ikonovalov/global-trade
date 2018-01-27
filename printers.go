@@ -34,6 +34,11 @@ import (
 	"strconv"
 )
 
+var (
+	bold []int = tablewriter.Colors{tablewriter.Bold}
+	norm []int = tablewriter.Colors{0}
+)
+
 func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Market", "Hidden", "Min amount", "Min price", "Max price"})
@@ -61,20 +66,38 @@ func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
 	table.Render()
 }
 
-func printWallets(caption string, currencyFilter string, funds map[string]float64, updated int64) {
+func printWallets(caption string, coinFilter string, fundsAndTickers struct {
+	funds   map[string]float64
+	tickers map[string]Ticker
+}, updated int64) {
+	// setup table
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Coin", "Hold"})
-	bold := tablewriter.Colors{tablewriter.Bold}
-	norm := tablewriter.Colors{0}
-	table.SetHeaderColor(bold, bold)
-	table.SetColumnColor(bold, norm)
+	table.SetHeader([]string{"Coin", "Hold", "USD RATE (24AVG)", "USD"})
+	table.SetHeaderColor(bold, bold, bold, bold)
+	table.SetColumnColor(bold, norm, norm, norm)
+
+	// determinate price multiplication indicator
+	priceFunc := func(ticker Ticker) float64{
+		return ticker.Avg
+	}
+
 	fmt.Printf("%s [%s]\n", Bold(caption), time.Unix(updated, 0).Format(time.Stamp))
-	for k, v := range funds {
-		if v == 0 || (currencyFilter != "all" && k != currencyFilter) {
+	var usdTotal float64
+	for coin, volume := range fundsAndTickers.funds {
+		if volume == 0 || (coinFilter != "all" && coin != coinFilter) {
 			continue
 		}
-		table.Append([]string{strings.ToUpper(k), fmt.Sprintf("%.8f", v)})
+		price := priceFunc(fundsAndTickers.tickers[fmt.Sprintf("%s_usd", coin)])
+		usdCoinPrice := volume * price
+		usdTotal += usdCoinPrice
+		table.Append([]string{
+			strings.ToUpper(coin),
+			fmt.Sprintf("%.8f", volume),
+			fmt.Sprintf("%.8f", price),
+			fmt.Sprintf("%.8f", usdCoinPrice),
+		})
 	}
+	table.SetFooter([]string{"", "", "Total", fmt.Sprintf("%8.2f", usdTotal)})
 	table.Render()
 }
 

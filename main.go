@@ -30,10 +30,13 @@ import (
 	"strings"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
+	"log"
+	"io/ioutil"
 )
 
 var (
 	app = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.1.1")
+	appVerboseFlag = app.Flag("verbose", "Print additional information").Bool()
 
 	cmdInit = app.Command("init", "Initialize nonce and keys container")
 
@@ -51,7 +54,7 @@ var (
 	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default("btc_usd").String()
 	cmdTradesLimit = cmdTrades.Arg("limit", "Trades output limit.").Default("100").Int()
 
-	cmdWallets = app.Command("wallets", "(w) Command returns information about user's balances and priviledges of API-key as well as server time.").Alias("w")
+	cmdWallets         = app.Command("wallets", "(w) Command returns information about user's balances and priviledges of API-key as well as server time.").Alias("w")
 	cmdWalletsCurrency = cmdWallets.Arg("currency", "Concrete currency").Default("all").String()
 
 	cmdActiveOrders    = app.Command("active-orders", "(ao) Show active orders").Alias("ao")
@@ -60,31 +63,38 @@ var (
 	cmdTradeHistory     = app.Command("trade-history", "(th) Trade history").Alias("th")
 	cmdTradeHistoryPair = cmdTradeHistory.Arg("pair", "doge_usd...").Required().String()
 
-	cmdTrade     = app.Command("trade", "(t) Creating new orders for stock exchange trading").Alias("t")
-	cmdTradePair = cmdTrade.Arg("pair", "Pair").Required().String()
-	cmdTradeType = cmdTrade.Arg("type", "Transaction type: sell or buy").Required().String()
-	cmdTradeRate = cmdTrade.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
+	cmdTrade       = app.Command("trade", "(t) Creating new orders for stock exchange trading").Alias("t")
+	cmdTradePair   = cmdTrade.Arg("pair", "Pair").Required().String()
+	cmdTradeType   = cmdTrade.Arg("type", "Transaction type: sell or buy").Required().String()
+	cmdTradeRate   = cmdTrade.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
 	cmdTradeAmount = cmdTrade.Arg("amount", "Exchange rate for buying or selling").Required().Float64()
 
-	cmdBuy = app.Command("buy", "(b) Buy on stock exchange").Alias("b")
-	cmdBuyPair = cmdBuy.Arg("pair", "Pair").Required().String()
-	cmdBuyRate = cmdBuy.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
+	cmdBuy       = app.Command("buy", "(b) Buy on stock exchange").Alias("b")
+	cmdBuyPair   = cmdBuy.Arg("pair", "Pair").Required().String()
+	cmdBuyRate   = cmdBuy.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
 	cmdBuyAmount = cmdBuy.Arg("amount", "Exchange rate for buying or selling").Required().Float64()
 
-	cmdSell = app.Command("sell", "(s) Sell on stock exchange").Alias("s")
-	cmdSellPair = cmdSell.Arg("pair", "Pair").Required().String()
-	cmdSellRate = cmdSell.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
+	cmdSell       = app.Command("sell", "(s) Sell on stock exchange").Alias("s")
+	cmdSellPair   = cmdSell.Arg("pair", "Pair").Required().String()
+	cmdSellRate   = cmdSell.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
 	cmdSellAmount = cmdSell.Arg("amount", "Exchange rate for buying or selling").Required().Float64()
 
-	cmdCancelOrder = app.Command("cancel", "(c) Cancells the chosen order").Alias("c")
+	cmdCancelOrder        = app.Command("cancel", "(c) Cancells the chosen order").Alias("c")
 	cmdCancelOrderOrderId = cmdCancelOrder.Arg("order_id", "Order ID").Required().String()
 )
 
 func main() {
 
+	command := kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	// setup logging
+	if !*appVerboseFlag {
+		log.SetFlags(0)
+		log.SetOutput(ioutil.Discard)
+	}
+
 	yobit := NewYobit()
 
-	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 	switch command {
 	case "init":
 		{
@@ -101,7 +111,7 @@ func main() {
 	case "ticker":
 		{
 			channel := make(chan TickerInfoResponse)
-			go yobit.Tickers24(strings.ToLower(*cmdTickerPair), channel)
+			go yobit.Tickers24([]string{strings.ToLower(*cmdTickerPair)}, channel)
 			tickerResponse := <-channel
 
 			for ticker, v := range tickerResponse.Tickers {
@@ -137,7 +147,22 @@ func main() {
 			go yobit.GetInfo(channel)
 			getInfoRes := <-channel
 			data := getInfoRes.Data
-			printWallets("Balances (include orders)", *cmdWalletsCurrency, data.FundsIncludeOrders, data.ServerTime)
+			funds := data.FundsIncludeOrders
+			usdPairs := make([]string, 0, len(funds))
+			for coin, volume := range funds {
+				pair := fmt.Sprintf("%s_usd", coin)
+				if volume > 0 && yobit.isMarketExists(pair) {
+					usdPairs = append(usdPairs, pair)
+				}
+			}
+			tickersChan := make(chan TickerInfoResponse)
+			go yobit.Tickers24(usdPairs, tickersChan)
+			tickerRs := <-tickersChan
+			fundsAndTickers := struct {
+				funds   map[string]float64
+				tickers map[string]Ticker
+			}{data.FundsIncludeOrders, tickerRs.Tickers}
+			printWallets("Balances (include orders)", *cmdWalletsCurrency, fundsAndTickers, data.ServerTime)
 		}
 	case "active-orders":
 		{
@@ -158,21 +183,21 @@ func main() {
 		{
 			channel := make(chan TradeResponse)
 			go yobit.Trade(*cmdTradePair, *cmdTradeType, *cmdTradeRate, *cmdTradeAmount, channel)
-			trade := <- channel
+			trade := <-channel
 			fmt.Printf("Order %d created\n", trade.Result.OrderId)
 		}
 	case "buy":
 		{
 			channel := make(chan TradeResponse)
 			go yobit.Trade(*cmdBuyPair, "buy", *cmdBuyRate, *cmdBuyAmount, channel)
-			trade := <- channel
+			trade := <-channel
 			fmt.Printf("Order %d created\n", trade.Result.OrderId)
 		}
 	case "sell":
 		{
 			channel := make(chan TradeResponse)
 			go yobit.Trade(*cmdSellPair, "sell", *cmdSellRate, *cmdSellAmount, channel)
-			trade := <- channel
+			trade := <-channel
 			fmt.Printf("Order %d created\n", trade.Result.OrderId)
 		}
 	case "cancel":

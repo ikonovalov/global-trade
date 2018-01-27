@@ -35,6 +35,8 @@ import (
 	"net/url"
 	"bytes"
 	"github.com/ikonovalov/go-cloudflare-scraper"
+	"time"
+	"strings"
 )
 
 const (
@@ -59,15 +61,26 @@ func NewYobit() (*Yobit) {
 	return &yobit
 }
 
+func (y *Yobit) isMarketExists(market string) (bool){
+	_, ok := y.pairs[market]
+	return ok
+}
+
+func (y *Yobit) fee(market string) float64 {
+	return y.pairs[market].Fee
+}
+
 func (y *Yobit) PassCloudflare() (*Yobit) {
-	channel := make(chan TickerInfoResponse)
-	go y.Tickers24("btc_usd", channel)
+	channel := make(chan InfoResponse)
+	go y.Info(channel)
 	<-channel
 	return y
 }
 
-func (y *Yobit) Tickers24(pairs string, ch chan<- TickerInfoResponse) {
-	ticker24Url := ApiBase + ApiVersion + "/ticker/" + pairs
+func (y *Yobit) Tickers24(pairs []string, ch chan<- TickerInfoResponse) {
+	pairsLine := strings.Join(pairs, "-")
+	start := time.Now()
+	ticker24Url := ApiBase + ApiVersion + "/ticker/" + pairsLine
 	response := y.callPublic(ticker24Url)
 
 	var tickerResponse TickerInfoResponse
@@ -76,17 +89,26 @@ func (y *Yobit) Tickers24(pairs string, ch chan<- TickerInfoResponse) {
 	if err := unmarshal(response, pTicker); err != nil {
 		panic(err)
 	}
+	elapsed := time.Since(start)
+	log.Printf("Tickers24 took %s", elapsed)
 	ch <- tickerResponse
 }
 
 func (y *Yobit) Info(ch chan<- InfoResponse) {
+	start := time.Now()
 	infoUrl := ApiBase + ApiVersion + "/info"
 	response := y.callPublic(infoUrl)
+	elapsed := time.Since(start)
+	log.Printf("Info took %s", elapsed)
+
 	var infoResponse InfoResponse
 	if err := unmarshal(response, &infoResponse); err != nil {
 		log.Fatal(err)
 		panic(err)
 	}
+	// cache all markets
+	y.pairs = infoResponse.Pairs
+
 	ch <- infoResponse
 }
 
@@ -95,8 +117,11 @@ func (y *Yobit) Depth(pairs string, ch chan<- DepthResponse) {
 }
 
 func (y *Yobit) DepthLimited(pairs string, limit int, ch chan<- DepthResponse) {
+	start := time.Now()
 	limitedDepthUrl := fmt.Sprintf("%s/depth/%s?limit=%d", ApiBase+ApiVersion, pairs, limit)
 	response := y.callPublic(limitedDepthUrl)
+	elapsed := time.Since(start)
+	log.Printf("Depth took %s", elapsed)
 	var depthResponse DepthResponse
 	if err := unmarshal(response, &depthResponse.Offers); err != nil {
 		log.Fatal(err)
@@ -119,7 +144,10 @@ func (y *Yobit) TradesLimited(pairs string, limit int, ch chan<- TradesResponse)
 // TRADE API =================================================================================
 
 func (y *Yobit) GetInfo(ch chan<- GetInfoResponse) {
+	start := time.Now()
 	response := y.callPrivate("getInfo")
+	elapsed := time.Since(start)
+	log.Printf("GetInfo took %s", elapsed)
 	var getInfoResp GetInfoResponse
 	if err := unmarshal(response, &getInfoResp); err != nil {
 		log.Fatal(err)
@@ -132,7 +160,10 @@ func (y *Yobit) GetInfo(ch chan<- GetInfoResponse) {
 }
 
 func (y *Yobit) ActiveOrders(pair string, ch chan<- ActiveOrdersResponse) {
+	start := time.Now()
 	response := y.callPrivate("ActiveOrders", CallArg{"pair", pair})
+	elapsed := time.Since(start)
+	log.Printf("ActiveOrders took %s", elapsed)
 	var activeOrders ActiveOrdersResponse
 	if err := unmarshal(response, &activeOrders); err != nil {
 		log.Fatal(err)
@@ -145,7 +176,10 @@ func (y *Yobit) ActiveOrders(pair string, ch chan<- ActiveOrdersResponse) {
 }
 
 func (y *Yobit) OrderInfo(orderId string, ch chan<- OrderInfoResponse) {
+	start := time.Now()
 	response := y.callPrivate("OrderInfo", CallArg{"order_id", orderId})
+	elapsed := time.Since(start)
+	log.Printf("OrderInfo took %s", elapsed)
 	var orderInfo OrderInfoResponse
 	if err := unmarshal(response, &orderInfo); err != nil {
 		log.Fatal(err)
@@ -158,12 +192,15 @@ func (y *Yobit) OrderInfo(orderId string, ch chan<- OrderInfoResponse) {
 }
 
 func (y *Yobit) Trade(pair string, tradeType string, rate float64, amount float64, ch chan TradeResponse) {
+	start := time.Now()
 	response := y.callPrivate("Trade",
 		CallArg{"pair", pair},
 		CallArg{"type", tradeType},
 		CallArg{"rate", strconv.FormatFloat(rate, 'f', 8, 64)},
 		CallArg{"amount", strconv.FormatFloat(amount, 'f', 8, 64)},
 	)
+	elapsed := time.Since(start)
+	log.Printf("Trade took %s", elapsed)
 	var tradeResponse TradeResponse
 	if err := unmarshal(response, &tradeResponse); err != nil {
 		log.Fatal(err)
@@ -175,8 +212,11 @@ func (y *Yobit) Trade(pair string, tradeType string, rate float64, amount float6
 	ch <- tradeResponse
 }
 
-func (y *Yobit) CancelOrder(orderId string , ch chan CancelOrderRespose) {
+func (y *Yobit) CancelOrder(orderId string, ch chan CancelOrderRespose) {
+	start := time.Now()
 	response := y.callPrivate("CancelOrder", CallArg{"order_id", orderId})
+	elapsed := time.Since(start)
+	log.Printf("CancelOrder took %s", elapsed)
 	var cancelResponse CancelOrderRespose
 	if err := unmarshal(response, &cancelResponse); err != nil {
 		log.Fatal(err)
@@ -271,4 +311,5 @@ func (y *Yobit) callPrivate(method string, args ...CallArg) ([]byte) {
 type Yobit struct {
 	client  *http.Client
 	apiKeys *ApiKeys
+	pairs   map[string]PairInfo
 }

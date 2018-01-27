@@ -30,22 +30,6 @@ import (
 )
 
 // ============ PUBLIC API OBJECTS =================
-/** ticker
-{
-	"ltc_btc":{
-		"high":105.41,
-		"low":104.67,
-		"avg":105.04,
-		"vol":43398.22251455,
-		"vol_cur":4546.26962359,
-		"last":105.11,
-		"buy":104.2,
-		"sell":105.11,
-		"updated":1418654531
-	}
-	...
-}
- */
 type TickerInfoResponse struct {
 	Tickers map[string]Ticker
 }
@@ -62,22 +46,6 @@ type Ticker struct {
 	Updated int64   `json:"updated"`
 }
 
-/** info
-	{
-	"server_time":1418654531,
-	"pairs":{
-		"ltc_btc":{
-			"decimal_places":8,
-			"min_price":0.00000001,
-			"max_price":10000,
-			"min_amount":0.0001,
-			"hidden":0,
-			"fee":0.2
-		}
-		...
-	}
-}
- */
 type InfoResponse struct {
 	ServerTime int64               `json:"server_time"`
 	Pairs      map[string]PairInfo `json:"pairs"`
@@ -92,26 +60,6 @@ type PairInfo struct {
 	Fee          float64 `json:"fee"`
 }
 
-/** depth
-{
-	"ltc_btc":{
-		"asks":[
-			[104.67,0.01],
-			[104.75,11],
-			[104.80,0.523],
-			...
-		],
-		"bids":[
-			[104.3,5.368783],
-			[104.212,2.57357],
-			[103.62,0.43663336],
-			[103.61,0.7255672],
-			...
-		]
-	}
-	...
-}
- */
 type DepthResponse struct {
 	Offers map[string]Offers
 }
@@ -138,28 +86,6 @@ func (n *Offer) UnmarshalJSON(buf []byte) error {
 	return nil
 }
 
-/* trades
-{
-	"ltc_btc":[
-		{
-			"type":"ask",
-			"price":104.2,
-			"amount":0.101,
-			"tid":41234426,
-			"timestamp":1418654531
-		},
-		{
-			"type":"bid",
-			"price":103.53,
-			"amount":1.51414,
-			"tid":41234422,
-			"timestamp":1418654530
-		},
-		...
-	]
-	...
-}
- */
 type TradesResponse struct {
 	Trades map[string][]Trade
 }

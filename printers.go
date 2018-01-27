@@ -72,32 +72,52 @@ func printWallets(caption string, coinFilter string, fundsAndTickers struct {
 }, updated int64) {
 	// setup table
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Coin", "Hold", "USD RATE (24AVG)", "USD"})
-	table.SetHeaderColor(bold, bold, bold, bold)
-	table.SetColumnColor(bold, norm, norm, norm)
+	table.SetHeader([]string{"Coin", "Hold", "USD RATE (24AVG)", "USD (24AVG)", "USD (LAST)"})
+	table.SetHeaderColor(bold, bold, bold, bold, bold)
+	table.SetColumnColor(bold, norm, norm, norm, norm)
 
 	// determinate price multiplication indicator
-	priceFunc := func(ticker Ticker) float64{
+	basePriceFunc := func(ticker Ticker) float64 {
 		return ticker.Avg
 	}
 
+	actualPriceFunc := func(ticker Ticker) float64 {
+		return ticker.Last
+	}
+
 	fmt.Printf("%s [%s]\n", Bold(caption), time.Unix(updated, 0).Format(time.Stamp))
-	var usdTotal float64
+	var baseUsdTotal float64
+	var actualUsdTotal float64
 	for coin, volume := range fundsAndTickers.funds {
 		if volume == 0 || (coinFilter != "all" && coin != coinFilter) {
 			continue
 		}
-		price := priceFunc(fundsAndTickers.tickers[fmt.Sprintf("%s_usd", coin)])
-		usdCoinPrice := volume * price
-		usdTotal += usdCoinPrice
+		tickerName := fmt.Sprintf("%s_usd", coin)
+
+		basePrice := basePriceFunc(fundsAndTickers.tickers[tickerName])
+		baseUsdCoinPrice := volume * basePrice
+		baseUsdTotal += baseUsdCoinPrice
+
+		actualPrice := actualPriceFunc(fundsAndTickers.tickers[tickerName])
+		actualUsdCoinPrice := volume * actualPrice
+		actualUsdTotal += actualUsdCoinPrice
+
+		usdCoinColor := Green
+		if basePrice > actualPrice {
+			usdCoinColor = Red
+		} else if basePrice == actualPrice {
+			usdCoinColor = Gray
+		}
+
 		table.Append([]string{
 			strings.ToUpper(coin),
 			fmt.Sprintf("%.8f", volume),
-			fmt.Sprintf("%.8f", price),
-			fmt.Sprintf("%.8f", usdCoinPrice),
+			fmt.Sprintf("%.8f", basePrice),
+			fmt.Sprintf("%.8f", baseUsdCoinPrice),
+			fmt.Sprintf("%.8f", usdCoinColor(actualUsdCoinPrice)),
 		})
 	}
-	table.SetFooter([]string{"", "", "Total", fmt.Sprintf("%8.2f", usdTotal)})
+	table.SetFooter([]string{"", "", "Total", fmt.Sprintf("%8.2f", baseUsdTotal), fmt.Sprintf("%8.2f", actualUsdTotal)})
 	table.Render()
 }
 

@@ -79,7 +79,7 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 		fmt.Sprintf("%s CAP (24AVG)", baseCurrency),
 		fmt.Sprintf("%s CAP (LAST)", baseCurrency),
 		"DIFF (ABS)",
-		"DIFF(%)",
+		"DIFF (%)",
 	})
 	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold)
 	table.SetColumnColor(bold, norm, norm, norm, norm, norm, norm)

@@ -121,7 +121,7 @@ func printWallets(coinFilter string, fundsAndTickers struct {
 			fmt.Sprintf("%.8f", basePrice),
 			fmt.Sprintf("%.8f", baseUsdCoinPrice),
 			fmt.Sprintf("%.8f", usdCoinColor(actualUsdCoinPrice)),
-			fmt.Sprintf("%.8f", usdCoinColor(diffUsdCoinPriceAbs)),
+			fmt.Sprintf("%+8.8f", usdCoinColor(diffUsdCoinPriceAbs)),
 			fmt.Sprintf("%+3.2f", usdCoinColor(diffUsdCoinPricePercent)),
 		})
 	}

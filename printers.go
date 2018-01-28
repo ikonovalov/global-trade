@@ -72,16 +72,20 @@ func printWallets(coinFilter string, fundsAndTickers struct {
 }, updated int64) {
 	// setup table
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Coin", "Hold", "USD RATE (24AVG)", "USD (24AVG)", "USD (LAST)"})
-	table.SetHeaderColor(bold, bold, bold, bold, bold)
-	table.SetColumnColor(bold, norm, norm, norm, norm)
+	table.SetHeader([]string{"Coin", "Hold", "USD RATE (24AVG)", "USD (24AVG)", "USD (LAST)", "DIFF (ABS)"})
+	table.SetHeaderColor(bold, bold, bold, bold, bold, bold)
+	table.SetColumnColor(bold, norm, bold, norm, norm, norm)
 
 	// determinate price multiplication indicator
 	basePriceFunc := func(ticker Ticker) float64 { return ticker.Avg }
 	actualPriceFunc := func(ticker Ticker) float64 { return ticker.Last }
 
-	var baseUsdTotal float64
-	var actualUsdTotal float64
+	var (
+		baseUsdTotal   float64
+		actualUsdTotal float64
+		diffUsdTotal   float64
+	)
+
 	for coin, volume := range fundsAndTickers.funds {
 		if volume == 0 || (coinFilter != "all" && coin != coinFilter) {
 			continue
@@ -96,6 +100,9 @@ func printWallets(coinFilter string, fundsAndTickers struct {
 		actualUsdCoinPrice := volume * actualPrice
 		actualUsdTotal += actualUsdCoinPrice
 
+		diffUsdCoinPriceAbs := actualUsdCoinPrice - baseUsdCoinPrice
+		diffUsdTotal += diffUsdCoinPriceAbs
+
 		usdCoinColor := Green
 		if basePrice > actualPrice {
 			usdCoinColor = Red
@@ -109,14 +116,16 @@ func printWallets(coinFilter string, fundsAndTickers struct {
 			fmt.Sprintf("%.8f", basePrice),
 			fmt.Sprintf("%.8f", baseUsdCoinPrice),
 			fmt.Sprintf("%.8f", usdCoinColor(actualUsdCoinPrice)),
+			fmt.Sprintf("%.8f", usdCoinColor(diffUsdCoinPriceAbs)),
 		})
 	}
 	table.SetFooter([]string{
 		"",
 		time.Unix(updated, 0).Format(time.Stamp),
-		"Total",
+		"Total cap",
 		fmt.Sprintf("%8.2f", baseUsdTotal),
 		fmt.Sprintf("%8.2f", actualUsdTotal),
+		fmt.Sprintf("%8.2f", diffUsdTotal),
 	})
 	table.Render()
 }

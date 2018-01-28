@@ -1,5 +1,5 @@
 ## Yobit cryptocurrency exchange crafted client.
-```bash
+```
 > ./yobit --help
 usage: yobit [<flags>] <command> [<args> ...]
 

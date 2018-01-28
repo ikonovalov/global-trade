@@ -174,7 +174,7 @@ type TradeResult struct {
 	Funds    map[string]float64 `json:"funds"`
 }
 
-type CancelOrderRespose struct {
+type CancelOrderResponse struct {
 	Success uint8        `json:"success"`
 	Error   string       `json:"error"`
 	Result  CancelResult `json:"return"`

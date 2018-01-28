@@ -66,7 +66,7 @@ func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
 	table.Render()
 }
 
-func printWallets(caption string, coinFilter string, fundsAndTickers struct {
+func printWallets(coinFilter string, fundsAndTickers struct {
 	funds   map[string]float64
 	tickers map[string]Ticker
 }, updated int64) {
@@ -77,15 +77,9 @@ func printWallets(caption string, coinFilter string, fundsAndTickers struct {
 	table.SetColumnColor(bold, norm, norm, norm, norm)
 
 	// determinate price multiplication indicator
-	basePriceFunc := func(ticker Ticker) float64 {
-		return ticker.Avg
-	}
+	basePriceFunc := func(ticker Ticker) float64 { return ticker.Avg }
+	actualPriceFunc := func(ticker Ticker) float64 { return ticker.Last }
 
-	actualPriceFunc := func(ticker Ticker) float64 {
-		return ticker.Last
-	}
-
-	fmt.Printf("%s [%s]\n", Bold(caption), time.Unix(updated, 0).Format(time.Stamp))
 	var baseUsdTotal float64
 	var actualUsdTotal float64
 	for coin, volume := range fundsAndTickers.funds {
@@ -117,7 +111,13 @@ func printWallets(caption string, coinFilter string, fundsAndTickers struct {
 			fmt.Sprintf("%.8f", usdCoinColor(actualUsdCoinPrice)),
 		})
 	}
-	table.SetFooter([]string{"", "", "Total", fmt.Sprintf("%8.2f", baseUsdTotal), fmt.Sprintf("%8.2f", actualUsdTotal)})
+	table.SetFooter([]string{
+		"",
+		time.Unix(updated, 0).Format(time.Stamp),
+		"Total",
+		fmt.Sprintf("%8.2f", baseUsdTotal),
+		fmt.Sprintf("%8.2f", actualUsdTotal),
+	})
 	table.Render()
 }
 

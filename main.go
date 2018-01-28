@@ -54,7 +54,7 @@ var (
 	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default("btc_usd").String()
 	cmdTradesLimit = cmdTrades.Arg("limit", "Trades output limit.").Default("100").Int()
 
-	cmdWallets         = app.Command("wallets", "(w) Command returns information about user's balances and priviledges of API-key as well as server time.").Alias("w")
+	cmdWallets         = app.Command("wallets", "(w) Command returns information about user's balances and privileges of API-key as well as server time.").Alias("w")
 	cmdWalletsCurrency = cmdWallets.Arg("currency", "Concrete currency").Default("all").String()
 
 	cmdActiveOrders    = app.Command("active-orders", "(ao) Show active orders").Alias("ao")
@@ -79,7 +79,7 @@ var (
 	cmdSellRate   = cmdSell.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
 	cmdSellAmount = cmdSell.Arg("amount", "Exchange rate for buying or selling").Required().Float64()
 
-	cmdCancelOrder        = app.Command("cancel", "(c) Cancells the chosen order").Alias("c")
+	cmdCancelOrder        = app.Command("cancel", "(c) Cancels the chosen order").Alias("c")
 	cmdCancelOrderOrderId = cmdCancelOrder.Arg("order_id", "Order ID").Required().String()
 )
 
@@ -162,7 +162,7 @@ func main() {
 				funds   map[string]float64
 				tickers map[string]Ticker
 			}{data.FundsIncludeOrders, tickerRs.Tickers}
-			printWallets("Balances (include orders)", *cmdWalletsCurrency, fundsAndTickers, data.ServerTime)
+			printWallets(*cmdWalletsCurrency, fundsAndTickers, data.ServerTime)
 		}
 	case "active-orders":
 		{
@@ -202,7 +202,7 @@ func main() {
 		}
 	case "cancel":
 		{
-			channel := make(chan CancelOrderRespose)
+			channel := make(chan CancelOrderResponse)
 			go yobit.CancelOrder(*cmdCancelOrderOrderId, channel)
 			cancelResult := <-channel
 			fmt.Printf("Order %d candeled\n", cancelResult.Result.OrderId)

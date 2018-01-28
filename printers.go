@@ -66,13 +66,21 @@ func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
 	table.Render()
 }
 
-func printWallets(coinFilter string, fundsAndTickers struct {
+func printWallets(baseCurrency string, fundsAndTickers struct {
 	funds   map[string]float64
 	tickers map[string]Ticker
 }, updated int64) {
 	// setup table
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Coin", "Hold", "USD RATE (24AVG)", "USD CAP (24AVG)", "USD CAP (LAST)", "DIFF (ABS)", "DIFF(%)"})
+	table.SetHeader([]string{
+		"Coin",
+		"Hold",
+		fmt.Sprintf("%s RATE (24AVG)", baseCurrency),
+		fmt.Sprintf("%s CAP (24AVG)", baseCurrency),
+		fmt.Sprintf("%s CAP (LAST)", baseCurrency),
+		"DIFF (ABS)",
+		"DIFF(%)",
+	})
 	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold)
 	table.SetColumnColor(bold, norm, norm, norm, norm, norm, norm)
 
@@ -87,10 +95,10 @@ func printWallets(coinFilter string, fundsAndTickers struct {
 	)
 
 	for coin, volume := range fundsAndTickers.funds {
-		if volume == 0 || (coinFilter != "all" && coin != coinFilter) {
+		if volume == 0 {
 			continue
 		}
-		tickerName := fmt.Sprintf("%s_usd", coin)
+		tickerName := fmt.Sprintf("%s_%s", coin, baseCurrency)
 
 		basePrice := basePriceFunc(fundsAndTickers.tickers[tickerName])
 		baseUsdCoinPrice := volume * basePrice

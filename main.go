@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	app = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.1.1")
+	app            = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.1.1")
 	appVerboseFlag = app.Flag("verbose", "Print additional information").Bool()
 
 	cmdInit = app.Command("init", "Initialize nonce and keys container")
@@ -54,8 +54,8 @@ var (
 	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default("btc_usd").String()
 	cmdTradesLimit = cmdTrades.Arg("limit", "Trades output limit.").Default("100").Int()
 
-	cmdWallets         = app.Command("wallets", "(w) Command returns information about user's balances and privileges of API-key as well as server time.").Alias("w")
-	cmdWalletsCurrency = cmdWallets.Arg("currency", "Concrete currency").Default("all").String()
+	cmdWallets             = app.Command("wallets", "(w) Command returns information about user's balances and privileges of API-key as well as server time.").Alias("w")
+	cmdWalletsBaseCurrency = cmdWallets.Arg("base", "Base recalculated currency").Default("usd").String()
 
 	cmdActiveOrders    = app.Command("active-orders", "(ao) Show active orders").Alias("ao")
 	cmdActiveOrderPair = cmdActiveOrders.Arg("pair", "doge_usd...").Required().String()
@@ -150,7 +150,7 @@ func main() {
 			funds := data.FundsIncludeOrders
 			usdPairs := make([]string, 0, len(funds))
 			for coin, volume := range funds {
-				pair := fmt.Sprintf("%s_usd", coin)
+				pair := fmt.Sprintf("%s_%s", coin, *cmdWalletsBaseCurrency)
 				if volume > 0 && yobit.isMarketExists(pair) {
 					usdPairs = append(usdPairs, pair)
 				}
@@ -162,7 +162,7 @@ func main() {
 				funds   map[string]float64
 				tickers map[string]Ticker
 			}{data.FundsIncludeOrders, tickerRs.Tickers}
-			printWallets(*cmdWalletsCurrency, fundsAndTickers, data.ServerTime)
+			printWallets(*cmdWalletsBaseCurrency, fundsAndTickers, data.ServerTime)
 		}
 	case "active-orders":
 		{

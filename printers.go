@@ -85,8 +85,20 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 	table.SetColumnColor(bold, norm, norm, norm, norm, norm, norm)
 
 	// determinate price multiplication indicator
-	basePriceFunc := func(ticker Ticker) float64 { return ticker.Avg }
-	actualPriceFunc := func(ticker Ticker) float64 { return ticker.Last }
+	basePriceFunc := func(tickerName string) float64 {
+		if tickerName == fmt.Sprintf("%s_%[1]s", baseCurrency) {
+			return float64(1)
+		} else {
+			return fundsAndTickers.tickers[tickerName].Avg
+		}
+	}
+	actualPriceFunc := func(tickerName string) float64 {
+		if tickerName == fmt.Sprintf("%s_%[1]s", baseCurrency) {
+			return float64(1)
+		} else {
+			return fundsAndTickers.tickers[tickerName].Last
+		}
+	}
 
 	var (
 		baseUsdTotal   float64
@@ -100,11 +112,11 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 		}
 		tickerName := fmt.Sprintf("%s_%s", coin, baseCurrency)
 
-		basePrice := basePriceFunc(fundsAndTickers.tickers[tickerName])
+		basePrice := basePriceFunc(tickerName)
 		baseUsdCoinPrice := volume * basePrice
 		baseUsdTotal += baseUsdCoinPrice
 
-		actualPrice := actualPriceFunc(fundsAndTickers.tickers[tickerName])
+		actualPrice := actualPriceFunc(tickerName)
 		actualUsdCoinPrice := volume * actualPrice
 		actualUsdTotal += actualUsdCoinPrice
 
@@ -139,7 +151,7 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 		"Total cap",
 		fmt.Sprintf("%8.2f", baseUsdTotal),
 		fmt.Sprintf("%8.2f", actualUsdTotal),
-		fmt.Sprintf("%8.2f", diffUsdTotal),
+		fmt.Sprintf("%+8.2f", diffUsdTotal),
 		"",
 	})
 	table.Render()

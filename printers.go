@@ -157,8 +157,11 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 	table.Render()
 }
 
-func printDepth(idx int, ask Offer) {
-	fmt.Printf("#%d %.8f <- %.8f\n", idx+1, ask.Price, ask.Quantity)
+func printDepth(offers *[]Offer) {
+	for idx, offer := range *offers {
+		fmt.Printf("#%-3d Prc: %8.8f Qnt: %8.8f\n", idx+1, offer.Price, offer.Quantity)
+	}
+
 }
 
 func printTicker(v Ticker, tickerName string) {

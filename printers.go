@@ -158,9 +158,17 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 }
 
 func printDepth(offers *[]Offer) {
-	for idx, offer := range *offers {
-		fmt.Printf("#%-3d Prc: %8.8f Qnt: %8.8f\n", idx+1, offer.Price, offer.Quantity)
+	var overallVolume float64
+	if len(*offers) == 0 {
+		fmt.Println(Bold("Empty"))
+		return
 	}
+	for idx, offer := range *offers {
+		volume := offer.Price * offer.Quantity
+		overallVolume += volume
+		fmt.Printf("#%-3d Prc: %8.8f Qnt: %8.8f Vol: %8.8f\n", idx+1, offer.Price, offer.Quantity, volume)
+	}
+	fmt.Println(Bold(fmt.Sprintf("Volume: %8.8f", overallVolume)))
 
 }
 

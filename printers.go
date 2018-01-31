@@ -158,7 +158,7 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 }
 
 func printDepth(offers *[]Offer) {
-	var overallVolume float64
+	var overallVolume, overallQnt, overallPrice float64
 	if len(*offers) == 0 {
 		fmt.Println(Bold("Empty"))
 		return
@@ -166,9 +166,12 @@ func printDepth(offers *[]Offer) {
 	for idx, offer := range *offers {
 		volume := offer.Price * offer.Quantity
 		overallVolume += volume
+		overallQnt += offer.Quantity
+		overallPrice +=offer.Price
 		fmt.Printf("#%-3d Prc: %8.8f Qnt: %8.8f Vol: %8.8f\n", idx+1, offer.Price, offer.Quantity, volume)
 	}
-	fmt.Println(Bold(fmt.Sprintf("Volume: %8.8f", overallVolume)))
+	avgAssetPrice := overallPrice / float64(len(*offers))
+	fmt.Println(Bold(fmt.Sprintf("Avg price: %8.8f Quantity: %8.8f Volume: %8.8f", avgAssetPrice, overallQnt, overallVolume)))
 
 }
 

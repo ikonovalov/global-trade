@@ -30,6 +30,11 @@ import (
 )
 
 // ============ PUBLIC API OBJECTS =================
+type ErrorResponse struct {
+	Success uint8  `json:"success"`
+	Error   string `json:"error"`
+}
+
 type TickerInfoResponse struct {
 	Tickers map[string]Ticker
 }
@@ -101,8 +106,8 @@ type Trade struct {
 // ============ TRADE API OBJECTS =====================
 type GetInfoResponse struct {
 	Success uint8         `json:"success"`
-	Data    GetInfoReturn `json:"return"`
 	Error   string        `json:"error"`
+	Data    GetInfoReturn `json:"return"`
 }
 
 type GetInfoReturn struct {
@@ -116,8 +121,8 @@ type GetInfoReturn struct {
 
 type ActiveOrdersResponse struct {
 	Success uint8                  `json:"success"`
-	Orders  map[string]ActiveOrder `json:"return"`
 	Error   string                 `json:"error"`
+	Orders  map[string]ActiveOrder `json:"return"`
 }
 
 type ActiveOrder struct {
@@ -131,8 +136,8 @@ type ActiveOrder struct {
 
 type OrderInfoResponse struct {
 	Success uint8                `json:"success"`
-	Orders  map[string]OrderInfo `json:"return"`
 	Error   string               `json:"error"`
+	Orders  map[string]OrderInfo `json:"return"`
 }
 
 type OrderInfo struct {

@@ -32,6 +32,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 )
 
 type ApiKeys struct {
@@ -47,7 +48,7 @@ func getNonce() (nonce uint64) {
 func readNonce() uint64 {
 	data, e := ioutil.ReadFile("nonce")
 	if e != nil {
-		panic("Nonce file read error. ")
+		panic(fmt.Errorf("nonce file read error"))
 	}
 	nonce, conErr := strconv.ParseUint(string(data), 10, 64)
 	if conErr != nil {

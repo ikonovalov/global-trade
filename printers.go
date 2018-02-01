@@ -41,11 +41,11 @@ var (
 
 func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Market", "Hidden", "Min amount", "Min price", "Max price"})
+	table.SetHeader([]string{"Market", "Hidden", "Fee", "Min amount", "Min price", "Max price"})
 	bold := tablewriter.Colors{tablewriter.Bold}
 	norm := tablewriter.Colors{0}
-	table.SetHeaderColor(bold, bold, bold, bold, bold)
-	table.SetColumnColor(bold, norm, norm, norm, norm)
+	table.SetHeaderColor(bold, bold, bold, bold, bold, bold)
+	table.SetColumnColor(bold, norm, norm, norm, norm, norm)
 
 	currencyFilter = strings.ToUpper(currencyFilter)
 	for name, desc := range infoResponse.Pairs {
@@ -57,9 +57,10 @@ func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
 			table.Append([]string{
 				currencyName,
 				fmt.Sprintf("%s", hidden),
-				fmt.Sprintf("%f", desc.MinAmount),
-				fmt.Sprintf("%f", desc.MinPrice),
-				fmt.Sprintf("%f", desc.MaxPrice),
+				fmt.Sprintf("%8.8f", desc.Fee),
+				fmt.Sprintf("%8.8f", desc.MinAmount),
+				fmt.Sprintf("%8.8f", desc.MinPrice),
+				fmt.Sprintf("%8.8f", desc.MaxPrice),
 			})
 		}
 	}

@@ -64,12 +64,6 @@ var (
 	cmdTradeHistory     = app.Command("trade-history", "(th) Trade history").Alias("th")
 	cmdTradeHistoryPair = cmdTradeHistory.Arg("pair", "doge_usd...").Required().String()
 
-	cmdTrade       = app.Command("trade", "(t) Creating new orders for stock exchange trading").Alias("t")
-	cmdTradePair   = cmdTrade.Arg("pair", "Pair").Required().String()
-	cmdTradeType   = cmdTrade.Arg("type", "Transaction type: sell or buy").Required().String()
-	cmdTradeRate   = cmdTrade.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
-	cmdTradeAmount = cmdTrade.Arg("amount", "Exchange rate for buying or selling").Required().Float64()
-
 	cmdBuy       = app.Command("buy", "(b) Buy on stock exchange").Alias("b")
 	cmdBuyPair   = cmdBuy.Arg("pair", "Pair").Required().String()
 	cmdBuyRate   = cmdBuy.Arg("rate", "Exchange rate for buying or selling").Required().Float64()
@@ -182,13 +176,6 @@ func main() {
 			history := <-channel
 			fmt.Println(history)
 		}
-	case "trade":
-		{
-			channel := make(chan TradeResponse)
-			go yobit.Trade(*cmdTradePair, *cmdTradeType, *cmdTradeRate, *cmdTradeAmount, channel)
-			trade := <-channel
-			fmt.Printf("Order %d created\n", trade.Result.OrderId)
-		}
 	case "buy":
 		{
 			channel := make(chan TradeResponse)
@@ -209,6 +196,10 @@ func main() {
 			go yobit.CancelOrder(*cmdCancelOrderOrderId, channel)
 			cancelResult := <-channel
 			fmt.Printf("Order %d candeled\n", cancelResult.Result.OrderId)
+		}
+	case "short":
+		{
+
 		}
 	default:
 		panic("Unknown command " + command)

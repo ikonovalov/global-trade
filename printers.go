@@ -57,7 +57,7 @@ func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
 			table.Append([]string{
 				currencyName,
 				fmt.Sprintf("%s", hidden),
-				fmt.Sprintf("%8.8f", desc.Fee),
+				fmt.Sprintf("%2.2f%%", desc.Fee),
 				fmt.Sprintf("%8.8f", desc.MinAmount),
 				fmt.Sprintf("%8.8f", desc.MinPrice),
 				fmt.Sprintf("%8.8f", desc.MaxPrice),

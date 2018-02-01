@@ -89,7 +89,7 @@ func (y *Yobit) Tickers24(pairs []string, ch chan<- TickerInfoResponse) {
 	pTicker := &tickerResponse.Tickers
 
 	if err := unmarshal(response, pTicker); err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	elapsed := time.Since(start)
 	log.Printf("Tickers24 took %s", elapsed)
@@ -105,7 +105,7 @@ func (y *Yobit) Info(ch chan<- InfoResponse) {
 
 	var infoResponse InfoResponse
 	if err := unmarshal(response, &infoResponse); err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	// cache all markets
 	y.pairs = infoResponse.Pairs
@@ -125,7 +125,7 @@ func (y *Yobit) DepthLimited(pairs string, limit int, ch chan<- DepthResponse) {
 	log.Printf("Depth took %s", elapsed)
 	var depthResponse DepthResponse
 	if err := unmarshal(response, &depthResponse.Offers); err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	ch <- depthResponse
 }
@@ -135,7 +135,7 @@ func (y *Yobit) TradesLimited(pairs string, limit int, ch chan<- TradesResponse)
 	response := y.callPublic(tradesLimitedUrl)
 	var tradesResponse TradesResponse
 	if err := unmarshal(response, &tradesResponse.Trades); err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	ch <- tradesResponse
 }
@@ -149,10 +149,10 @@ func (y *Yobit) GetInfo(ch chan<- GetInfoResponse) {
 	log.Printf("GetInfo took %s", elapsed)
 	var getInfoResp GetInfoResponse
 	if err := unmarshal(response, &getInfoResp); err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	if getInfoResp.Success == 0 {
-		log.Fatal(errors.New(getInfoResp.Error))
+		fatal(errors.New(getInfoResp.Error))
 	}
 	ch <- getInfoResp
 }
@@ -164,11 +164,10 @@ func (y *Yobit) ActiveOrders(pair string, ch chan<- ActiveOrdersResponse) {
 	log.Printf("ActiveOrders took %s", elapsed)
 	var activeOrders ActiveOrdersResponse
 	if err := unmarshal(response, &activeOrders); err != nil {
-		log.Fatal(err)
-		panic(err)
+		fatal(err)
 	}
 	if activeOrders.Success == 0 {
-		log.Fatal(errors.New(activeOrders.Error))
+		fatal(errors.New(activeOrders.Error))
 	}
 	ch <- activeOrders
 }
@@ -180,10 +179,10 @@ func (y *Yobit) OrderInfo(orderId string, ch chan<- OrderInfoResponse) {
 	log.Printf("OrderInfo took %s", elapsed)
 	var orderInfo OrderInfoResponse
 	if err := unmarshal(response, &orderInfo); err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	if orderInfo.Success == 0 {
-		log.Fatal(errors.New(orderInfo.Error))
+		fatal(errors.New(orderInfo.Error))
 	}
 	ch <- orderInfo
 }
@@ -200,10 +199,10 @@ func (y *Yobit) Trade(pair string, tradeType string, rate float64, amount float6
 	log.Printf("Trade took %s", elapsed)
 	var tradeResponse TradeResponse
 	if err := unmarshal(response, &tradeResponse); err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	if tradeResponse.Success == 0 {
-		log.Fatal(errors.New(tradeResponse.Error))
+		fatal(errors.New(tradeResponse.Error))
 	}
 	ch <- tradeResponse
 }
@@ -215,10 +214,10 @@ func (y *Yobit) CancelOrder(orderId string, ch chan CancelOrderResponse) {
 	log.Printf("CancelOrder took %s", elapsed)
 	var cancelResponse CancelOrderResponse
 	if err := unmarshal(response, &cancelResponse); err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	if cancelResponse.Success == 0 {
-		log.Fatal(errors.New(cancelResponse.Error))
+		fatal(errors.New(cancelResponse.Error))
 	}
 	ch <- cancelResponse
 }
@@ -230,10 +229,10 @@ func (y *Yobit) TradeHistory(pair string, ch chan<- TradeHistoryResponse) {
 	)
 	var tradeHistory TradeHistoryResponse
 	if err := unmarshal(response, &tradeHistory); err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	if tradeHistory.Success == 0 {
-		log.Fatal(errors.New(tradeHistory.Error))
+		fatal(errors.New(tradeHistory.Error))
 	}
 	ch <- tradeHistory
 }
@@ -255,11 +254,11 @@ func unmarshal(data [] byte, obj interface{}) error {
 func (y *Yobit) query(req *http.Request) ([]byte) {
 	resp, err := y.client.Do(req)
 	if err != nil {
-		log.Fatal("Do: ", err)
+		fatal("Do: ", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		log.Fatal(fmt.Errorf("%s\nSomething goes wrong. HTTP%d", req.URL.String(), resp.StatusCode))
+		fatal(fmt.Errorf("%s\nSomething goes wrong. HTTP%d", req.URL.String(), resp.StatusCode))
 	}
 	response, _ := ioutil.ReadAll(resp.Body)
 	return response
@@ -268,7 +267,7 @@ func (y *Yobit) query(req *http.Request) ([]byte) {
 func (y *Yobit) callPublic(url string) ([]byte) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Fatal("NewRequest: ", err)
+		fatal("NewRequest: ", err)
 	}
 	return y.query(req)
 }
@@ -290,9 +289,8 @@ func (y *Yobit) callPrivate(method string, args ...CallArg) ([]byte) {
 	signature := signHmacSha512([]byte(y.apiKeys.Secret), []byte(encode))
 	body := bytes.NewBufferString(encode)
 	req, err := http.NewRequest("POST", ApiTrade, body)
-
 	if err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 
 	req.Header.Add("Content-type", "application/x-www-form-urlencoded")

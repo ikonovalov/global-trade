@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	app            = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.2.1")
+	app            = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.3.0")
 	appVerboseFlag = app.Flag("verbose", "Print additional information").Bool()
 
 	cmdInit = app.Command("init", "Initialize nonce and keys container")
@@ -194,14 +194,14 @@ func main() {
 			channel := make(chan TradeResponse)
 			go yobit.Trade(*cmdBuyPair, "buy", *cmdBuyRate, *cmdBuyAmount, channel)
 			trade := <-channel
-			fmt.Printf("Order %d created\n", trade.Result.OrderId)
+			printTradeResult(trade.Result)
 		}
 	case "sell":
 		{
 			channel := make(chan TradeResponse)
 			go yobit.Trade(*cmdSellPair, "sell", *cmdSellRate, *cmdSellAmount, channel)
 			trade := <-channel
-			fmt.Printf("Order %d created\n", trade.Result.OrderId)
+			printTradeResult(trade.Result)
 		}
 	case "cancel":
 		{

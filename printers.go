@@ -39,6 +39,11 @@ var (
 	norm []int = tablewriter.Colors{0}
 )
 
+func fatal(v ...interface{}) {
+	fmt.Println(Red(Bold(fmt.Sprint(v))).String())
+	os.Exit(1)
+}
+
 func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Market", "Hidden", "Fee", "Min amount", "Min price", "Max price"})
@@ -168,7 +173,7 @@ func printDepth(offers *[]Offer) {
 		volume := offer.Price * offer.Quantity
 		overallVolume += volume
 		overallQnt += offer.Quantity
-		overallPrice +=offer.Price
+		overallPrice += offer.Price
 		fmt.Printf("#%-3d Prc: %8.8f Qnt: %8.8f Vol: %8.8f\n", idx+1, offer.Price, offer.Quantity, volume)
 	}
 	avgAssetPrice := overallPrice / float64(len(*offers))
@@ -196,6 +201,23 @@ func printTrades(trades []Trade) {
 
 		fmt.Printf("%s %s Price[%.8f] Amount[%.8f] \u21D0 %d\n", tm, Bold(Colored(tradeDirection)), trade.Price, trade.Amount, trade.Tid)
 	}
+}
+
+func printTradeResult(trade TradeResult) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{
+		"OrderId",
+		"Received",
+		"Remains",
+	})
+	table.SetHeaderColor(bold, bold, bold)
+	table.SetColumnColor(bold, norm, norm)
+	table.Append([]string{
+		fmt.Sprintf("%d", trade.OrderId),
+		fmt.Sprintf("%8.8f", trade.Received),
+		fmt.Sprintf("%8.8f", trade.Remains),
+	})
+	table.Render()
 }
 
 func printActiveOrders(activeOrders ActiveOrdersResponse) {

@@ -48,12 +48,12 @@ const (
 func NewYobit() (*Yobit) {
 	cloudflare, err := scraper.NewTransport(http.DefaultTransport)
 	if err != nil {
-		panic(err)
+		fatal(err)
 	}
 
 	keys, err := loadApiKeys()
 	if err != nil {
-		panic(err)
+		fatal(err)
 	}
 
 	yobit := Yobit{client: &http.Client{Transport: cloudflare, Jar: cloudflare.Cookies}, apiKeys: &keys}

@@ -32,12 +32,17 @@ import (
 	"os"
 	"time"
 	"strconv"
+	"math"
 )
 
 var (
 	bold []int = tablewriter.Colors{tablewriter.Bold}
 	norm []int = tablewriter.Colors{0}
 )
+
+func sprintf64(v float64) string {
+	return fmt.Sprintf("%8.8f", v)
+}
 
 func fatal(v ...interface{}) {
 	fmt.Println(Red(Bold(fmt.Sprint(v))).String())
@@ -163,22 +168,51 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 	table.Render()
 }
 
-func printDepth(offers *[]Offer) {
-	var overallVolume, overallQnt, overallPrice float64
-	if len(*offers) == 0 {
-		fmt.Println(Bold("Empty"))
-		return
-	}
-	for idx, offer := range *offers {
-		volume := offer.Price * offer.Quantity
-		overallVolume += volume
-		overallQnt += offer.Quantity
-		overallPrice += offer.Price
-		fmt.Printf("#%-3d Prc: %8.8f Qnt: %8.8f Vol: %8.8f\n", idx+1, offer.Price, offer.Quantity, volume)
-	}
-	avgAssetPrice := overallPrice / float64(len(*offers))
-	fmt.Println(Bold(fmt.Sprintf("Avg price: %8.8f Quantity: %8.8f Volume: %8.8f", avgAssetPrice, overallQnt, overallVolume)))
+func printOffers(offers Offers) {
+	var (
+		asks    = offers.Asks
+		bids    = offers.Bids
+		asksLen = len(asks)
+		bidsLen = len(bids)
+		depth   = math.Max(float64(asksLen), float64(bidsLen))
+	)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{
+		"#",
+		"ask price",
+		"ask quantity",
+		"bid price",
+		"bid quantity",
+	})
+	table.SetHeaderColor(bold, bold, bold, bold, bold)
+	table.SetColumnColor(norm, norm, norm, norm, norm)
 
+	appendOffer := func(row []string, offer Offer) []string {
+		return append(row, sprintf64(offer.Price), sprintf64(offer.Quantity))
+	}
+
+	appendEmpty := func(row []string) []string {
+		return append(row, "", "")
+	}
+
+	for i := 0; i < int(depth); i++ {
+		row := append(make([]string, 0, 4), fmt.Sprintf("%d", i+1))
+
+		if i < asksLen {
+			ask := asks[i]
+			row = appendOffer(row, ask)
+		} else {
+			row = appendEmpty(row)
+		}
+		if i < bidsLen {
+			bid := bids[i]
+			row = appendOffer(row, bid)
+		} else {
+			row = appendEmpty(row)
+		}
+		table.Append(row)
+	}
+	table.Render()
 }
 
 func printTicker(v Ticker, tickerName string) {

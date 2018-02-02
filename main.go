@@ -47,7 +47,6 @@ var (
 	cmdTickerPair = cmdTicker.Arg("pairs", "Listing ticker name. eth_btc, xem_usd, and so on.").Default("btc_usd").String()
 
 	cmdDepth         = app.Command("depth", "(d) Command returns information about lists of active orders for selected pairs.").Alias("d")
-	cmdDepthAskOrBid = cmdDepth.Arg("direction", "ask or bid").Default("ask").String()
 	cmdDepthPair     = cmdDepth.Arg("pairs", "eth_btc, xem_usd and so on.").Default("btc_usd").String()
 	cmdDepthLimit    = cmdDepth.Arg("limit", "Depth output limit").Default("20").Int()
 
@@ -118,13 +117,8 @@ func main() {
 			channel := make(chan DepthResponse)
 			go yobit.DepthLimited(strings.ToLower(*cmdDepthPair), *cmdDepthLimit, channel)
 			depthResponse := <-channel
-			orders := depthResponse.Offers[*cmdDepthPair]
-			fmt.Printf("%s %s\n", Bold(strings.ToUpper(*cmdDepthPair)).String(), Bold(strings.ToUpper(*cmdDepthAskOrBid)).String())
-			offers := &orders.Asks
-			if strings.ToLower(*cmdDepthAskOrBid) == "bid" {
-				offers = &orders.Bids
-			}
-			printDepth(offers)
+			offers := depthResponse.Offers[*cmdDepthPair]
+			printOffers(offers)
 
 		}
 	case "trades":

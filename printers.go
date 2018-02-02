@@ -187,12 +187,25 @@ func printOffers(offers Offers) {
 	table.SetHeaderColor(bold, bold, bold, bold, bold)
 	table.SetColumnColor(norm, norm, norm, norm, norm)
 
-	appendOffer := func(row []string, offer Offer) []string {
-		return append(row, sprintf64(offer.Price), sprintf64(offer.Quantity))
+	appendOffer := func(row []string, offer Offer, wall bool) []string {
+		qnt := sprintf64(offer.Quantity)
+		if wall {
+			qnt = Bold(qnt).String()
+		}
+		return append(row, sprintf64(offer.Price), qnt)
 	}
 
 	appendEmpty := func(row []string) []string {
 		return append(row, "", "")
+	}
+
+	passingWall := func(index int, offers []Offer) bool { // TODO Need smarter algorithm!
+		if index == len(offers) - 1 {
+			return false
+		}
+		offer := offers[index]
+		nextOffer := offers[index + 1]
+		return offer.Quantity > nextOffer.Quantity * 700.0
 	}
 
 	for i := 0; i < int(depth); i++ {
@@ -200,13 +213,13 @@ func printOffers(offers Offers) {
 
 		if i < asksLen {
 			ask := asks[i]
-			row = appendOffer(row, ask)
+			row = appendOffer(row, ask, passingWall(i, asks))
 		} else {
 			row = appendEmpty(row)
 		}
 		if i < bidsLen {
 			bid := bids[i]
-			row = appendOffer(row, bid)
+			row = appendOffer(row, bid, passingWall(i, bids))
 		} else {
 			row = appendEmpty(row)
 		}

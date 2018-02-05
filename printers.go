@@ -33,6 +33,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"sort"
 )
 
 var (
@@ -84,6 +85,7 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 	// setup table
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{
+		"#",
 		"Coin",
 		"Hold",
 		fmt.Sprintf("%s RATE (24AVG)", baseCurrency),
@@ -92,8 +94,8 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 		"DIFF (ABS)",
 		"DIFF (%)",
 	})
-	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold)
-	table.SetColumnColor(bold, norm, norm, norm, norm, norm, norm)
+	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold)
+	table.SetColumnColor(bold, bold, norm, norm, norm, norm, norm, norm)
 
 	// determinate price multiplication indicator
 	basePriceFunc := func(tickerName string) float64 {
@@ -111,13 +113,22 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 		}
 	}
 
+	// define global accumulators
 	var (
 		baseUsdTotal   float64
 		actualUsdTotal float64
 		diffUsdTotal   float64
 	)
 
-	for coin, volume := range fundsAndTickers.funds {
+	// order coins by name
+	coins := make([]string, 0, len(fundsAndTickers.funds))
+	for c := range fundsAndTickers.funds {
+		coins = append(coins, c)
+	}
+	sort.Strings(coins)
+
+	for idx, coin := range coins {
+		volume := fundsAndTickers.funds[coin]
 		if volume == 0 {
 			continue
 		}
@@ -147,6 +158,7 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 		}
 
 		table.Append([]string{
+			fmt.Sprintf("%d", idx),
 			strings.ToUpper(coin),
 			fmt.Sprintf("%.8f", volume),
 			fmt.Sprintf("%.8f", basePrice),
@@ -157,6 +169,7 @@ func printWallets(baseCurrency string, fundsAndTickers struct {
 		})
 	}
 	table.SetFooter([]string{
+		"",
 		"",
 		time.Unix(updated, 0).Format(time.Stamp),
 		"Total cap",

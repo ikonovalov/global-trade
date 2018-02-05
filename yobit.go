@@ -25,19 +25,19 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/ikonovalov/go-cloudflare-scraper"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"errors"
-	"strconv"
 	"net/url"
-	"bytes"
-	"github.com/ikonovalov/go-cloudflare-scraper"
-	"time"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -46,7 +46,7 @@ const (
 	ApiTrade   = "https://yobit.net/tapi/"
 )
 
-func NewYobit() (*Yobit) {
+func NewYobit() *Yobit {
 	cloudflare, err := scraper.NewTransport(http.DefaultTransport)
 	if err != nil {
 		fatal(err)
@@ -63,7 +63,7 @@ func NewYobit() (*Yobit) {
 	return &yobit
 }
 
-func (y *Yobit) isMarketExists(market string) (bool) {
+func (y *Yobit) isMarketExists(market string) bool {
 	_, ok := y.pairs[market]
 	return ok
 }
@@ -72,7 +72,7 @@ func (y *Yobit) fee(market string) float64 {
 	return y.pairs[market].Fee
 }
 
-func (y *Yobit) PassCloudflare() (*Yobit) {
+func (y *Yobit) PassCloudflare() *Yobit {
 	channel := make(chan InfoResponse)
 	go y.Info(channel)
 	<-channel
@@ -239,7 +239,7 @@ func (y *Yobit) TradeHistory(pair string, ch chan<- TradeHistoryResponse) {
 	ch <- tradeHistory
 }
 
-func unmarshal(data [] byte, obj interface{}) error {
+func unmarshal(data []byte, obj interface{}) error {
 	err := json.Unmarshal(data, obj)
 	if err != nil {
 		err = fmt.Errorf("unmarshaling failed. %s %s", string(data), err)
@@ -253,7 +253,7 @@ func unmarshal(data [] byte, obj interface{}) error {
 	return err
 }
 
-func (y *Yobit) query(req *http.Request) ([]byte) {
+func (y *Yobit) query(req *http.Request) []byte {
 	resp, err := y.client.Do(req)
 	if err != nil {
 		fatal("Do: ", err)
@@ -266,7 +266,7 @@ func (y *Yobit) query(req *http.Request) ([]byte) {
 	return response
 }
 
-func (y *Yobit) callPublic(url string) ([]byte) {
+func (y *Yobit) callPublic(url string) []byte {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		fatal("NewRequest: ", err)
@@ -278,8 +278,8 @@ type CallArg struct {
 	name, value string
 }
 
-func (y *Yobit) callPrivate(method string, args ...CallArg) ([]byte) {
-	nonce := GetAndIncrement(y.mutex)
+func (y *Yobit) callPrivate(method string, args ...CallArg) []byte {
+	nonce := y.GetAndIncrementNonce()
 	form := url.Values{
 		"method": {method},
 		"nonce":  {strconv.FormatUint(nonce, 10)},

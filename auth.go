@@ -25,24 +25,23 @@
 package main
 
 import (
-	"os"
-	"io/ioutil"
-	"strconv"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"sync"
+	"io/ioutil"
+	"os"
+	"strconv"
 )
 
 const (
 	credentialFile = "credential"
-	nonceFile = "nonce"
+	nonceFile      = "nonce"
 )
 
 type ApiCredential struct {
-	Key string `json:"key"`
+	Key    string `json:"key"`
 	Secret string `json:"secret"`
 }
 
@@ -52,7 +51,7 @@ func createCredentialFile(adiCredential ApiCredential) {
 			panic(err)
 		}
 	} else {
-		data, _ :=json.Marshal(adiCredential)
+		data, _ := json.Marshal(adiCredential)
 		if err := ioutil.WriteFile(credentialFile, data, 0644); err != nil {
 			panic(err)
 		}
@@ -70,9 +69,9 @@ func loadApiCredential() (ApiCredential, error) {
 	return keys, unmarshalError
 }
 
-func GetAndIncrement(mutex sync.Mutex) (nonce uint64) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func (y *Yobit) GetAndIncrementNonce() (nonce uint64) {
+	y.mutex.Lock()
+	defer y.mutex.Unlock()
 	nonce = readNonce()
 	incrementNonce(&nonce)
 	return

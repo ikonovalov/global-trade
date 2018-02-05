@@ -27,12 +27,12 @@ package main
 import (
 	"fmt"
 	. "github.com/logrusorgru/aurora"
-	"strings"
 	"github.com/olekukonko/tablewriter"
-	"os"
-	"time"
-	"strconv"
 	"math"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 )
 
 var (
@@ -200,12 +200,12 @@ func printOffers(offers Offers) {
 	}
 
 	passingWall := func(index int, offers []Offer) bool { // TODO Need smarter algorithm!
-		if index == len(offers) - 1 {
+		if index == len(offers)-1 {
 			return false
 		}
 		offer := offers[index]
-		nextOffer := offers[index + 1]
-		return offer.Quantity > nextOffer.Quantity * 700.0
+		nextOffer := offers[index+1]
+		return offer.Quantity > nextOffer.Quantity*700.0
 	}
 
 	for i := 0; i < int(depth); i++ {

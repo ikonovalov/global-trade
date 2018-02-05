@@ -27,20 +27,20 @@ package main
 import (
 	"fmt"
 	. "github.com/logrusorgru/aurora"
-	"strings"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"os"
-	"log"
 	"io/ioutil"
+	"log"
+	"os"
+	"strings"
 )
 
 var (
 	app            = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.3.0")
 	appVerboseFlag = app.Flag("verbose", "Print additional information").Bool()
 
-	cmdInit = app.Command("init", "Initialize nonce and keys container")
+	cmdInit       = app.Command("init", "Initialize nonce and keys container")
 	cmdInitSecret = cmdInit.Arg("secret", "API secret").Required().String()
-	cmdInitKey = cmdInit.Arg("key", "API key").Required().String()
+	cmdInitKey    = cmdInit.Arg("key", "API key").Required().String()
 
 	cmdMarkets      = app.Command("markets", "(m) Show all listed tickers on the Yobit").Alias("m")
 	cmdInfoCurrency = cmdMarkets.Arg("cryptocurrency", "Show markets only for specified currency: btc, eth, usd and so on.").Default("").String()
@@ -48,9 +48,9 @@ var (
 	cmdTicker     = app.Command("ticker", "(tc) Command provides statistic data for the last 24 hours.").Alias("tc")
 	cmdTickerPair = cmdTicker.Arg("pairs", "Listing ticker name. eth_btc, xem_usd, and so on.").Default("btc_usd").String()
 
-	cmdDepth         = app.Command("depth", "(d) Command returns information about lists of active orders for selected pairs.").Alias("d")
-	cmdDepthPair     = cmdDepth.Arg("pairs", "eth_btc, xem_usd and so on.").Default("btc_usd").String()
-	cmdDepthLimit    = cmdDepth.Arg("limit", "Depth output limit").Default("20").Int()
+	cmdDepth      = app.Command("depth", "(d) Command returns information about lists of active orders for selected pairs.").Alias("d")
+	cmdDepthPair  = cmdDepth.Arg("pairs", "eth_btc, xem_usd and so on.").Default("btc_usd").String()
+	cmdDepthLimit = cmdDepth.Arg("limit", "Depth output limit").Default("20").Int()
 
 	cmdTrades      = app.Command("trades", "(tr) Command returns information about the last transactions of selected pairs.").Alias("tr")
 	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default("btc_usd").String()
@@ -94,7 +94,7 @@ func main() {
 	switch command {
 	case "init":
 		{
-			createCredentialFile(ApiCredential{Secret:*cmdInitSecret, Key: *cmdInitKey})
+			createCredentialFile(ApiCredential{Secret: *cmdInitSecret, Key: *cmdInitKey})
 			createNonceFileIfNotExists()
 			writeNonce([]byte("1"))
 		}

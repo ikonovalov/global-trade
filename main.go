@@ -39,6 +39,8 @@ var (
 	appVerboseFlag = app.Flag("verbose", "Print additional information").Bool()
 
 	cmdInit = app.Command("init", "Initialize nonce and keys container")
+	cmdInitSecret = cmdInit.Arg("secret", "API secret").Required().String()
+	cmdInitKey = cmdInit.Arg("key", "API key").Required().String()
 
 	cmdMarkets      = app.Command("markets", "(m) Show all listed tickers on the Yobit").Alias("m")
 	cmdInfoCurrency = cmdMarkets.Arg("cryptocurrency", "Show markets only for specified currency: btc, eth, usd and so on.").Default("").String()
@@ -92,7 +94,9 @@ func main() {
 	switch command {
 	case "init":
 		{
-			createKeysFile()
+			createCredentialFile(ApiCredential{Secret:*cmdInitSecret, Key: *cmdInitKey})
+			createNonceFileIfNotExists()
+			writeNonce([]byte("1"))
 		}
 	case "markets":
 		{

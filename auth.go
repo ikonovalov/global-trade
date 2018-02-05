@@ -33,20 +33,54 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sync"
 )
 
-type ApiKeys struct {
+const (
+	credentialFile = "credential"
+	nonceFile = "nonce"
+)
+
+type ApiCredential struct {
 	Key string `json:"key"`
 	Secret string `json:"secret"`
 }
 
-func getNonce() (nonce uint64) {
-	createNonceFileIfNotExists()
-	return readNonce()
+func createCredentialFile(adiCredential ApiCredential) {
+	if _, err := os.Stat(credentialFile); os.IsNotExist(err) {
+		if _, err = os.Create(credentialFile); err != nil {
+			panic(err)
+		}
+	} else {
+		data, _ :=json.Marshal(adiCredential)
+		if err := ioutil.WriteFile(credentialFile, data, 0644); err != nil {
+			panic(err)
+		}
+	}
 }
 
-func readNonce() uint64 {
-	data, e := ioutil.ReadFile("nonce")
+func loadApiCredential() (ApiCredential, error) {
+	file, e := ioutil.ReadFile(credentialFile)
+	if e != nil {
+		return ApiCredential{}, e
+	}
+	var keys ApiCredential
+	unmarshalError := json.Unmarshal(file, &keys)
+
+	return keys, unmarshalError
+}
+
+func GetAndIncrement(mutex sync.Mutex) (nonce uint64) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	nonce = readNonce()
+	incrementNonce(&nonce)
+	return
+}
+
+func readNonce() (nonce uint64) {
+	createNonceFileIfNotExists()
+	data, e := ioutil.ReadFile(nonceFile)
 	if e != nil {
 		panic(fmt.Errorf("nonce file read error"))
 	}
@@ -54,25 +88,24 @@ func readNonce() uint64 {
 	if conErr != nil {
 		panic(conErr)
 	}
-	return nonce
-}
-
-func createKeysFile() {
-	data, _ :=json.Marshal(ApiKeys{})
-	if err := ioutil.WriteFile("keys", data, 0644); err != nil {
-		panic(err)
-	}
+	return
 }
 
 func writeNonce(data []byte) {
-	if err := ioutil.WriteFile("nonce", data, 0644); err != nil {
+	if err := ioutil.WriteFile(nonceFile, data, 0644); err != nil {
 		panic(err)
 	}
 }
 
+func incrementNonce(nonceOld *uint64) {
+	*nonceOld = *nonceOld + 1
+	ns := strconv.FormatUint(*nonceOld, 10)
+	writeNonce([]byte(ns))
+}
+
 func createNonceFileIfNotExists() {
-	if _, err := os.Stat("nonce"); os.IsNotExist(err) {
-		if _, err = os.Create("nonce"); err != nil {
+	if _, err := os.Stat(nonceFile); os.IsNotExist(err) {
+		if _, err = os.Create(nonceFile); err != nil {
 			panic(err)
 		}
 		d1 := []byte("1")
@@ -80,26 +113,9 @@ func createNonceFileIfNotExists() {
 	}
 }
 
-func incrementNonce(nonceOld *uint64) {
-	newNonce := *nonceOld + 1
-	ns := strconv.FormatUint(newNonce, 10)
-	writeNonce([]byte(ns))
-}
-
 func signHmacSha512(secret []byte, message []byte) (digest string) {
 	mac := hmac.New(sha512.New, secret)
 	mac.Write(message)
 	digest = hex.EncodeToString(mac.Sum(nil))
 	return
-}
-
-func loadApiKeys() (ApiKeys, error) {
-	file, e := ioutil.ReadFile("keys")
-	if e != nil {
-		panic(e)
-	}
-	var keys ApiKeys
-	unmarshalError := json.Unmarshal(file, &keys)
-
-	return keys, unmarshalError
 }

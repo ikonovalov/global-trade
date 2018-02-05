@@ -37,6 +37,7 @@ import (
 	"github.com/ikonovalov/go-cloudflare-scraper"
 	"time"
 	"strings"
+	"sync"
 )
 
 const (
@@ -51,12 +52,13 @@ func NewYobit() (*Yobit) {
 		fatal(err)
 	}
 
-	keys, err := loadApiKeys()
+	credential, err := loadApiCredential()
 	if err != nil {
-		fatal(err)
+		log.Println("Credential not set")
+		credential = ApiCredential{}
 	}
 
-	yobit := Yobit{client: &http.Client{Transport: cloudflare, Jar: cloudflare.Cookies}, apiKeys: &keys}
+	yobit := Yobit{client: &http.Client{Transport: cloudflare, Jar: cloudflare.Cookies}, credential: &credential}
 	yobit.PassCloudflare()
 	return &yobit
 }
@@ -277,7 +279,7 @@ type CallArg struct {
 }
 
 func (y *Yobit) callPrivate(method string, args ...CallArg) ([]byte) {
-	nonce := getNonce()
+	nonce := GetAndIncrement(y.mutex)
 	form := url.Values{
 		"method": {method},
 		"nonce":  {strconv.FormatUint(nonce, 10)},
@@ -286,7 +288,7 @@ func (y *Yobit) callPrivate(method string, args ...CallArg) ([]byte) {
 		form.Add(arg.name, arg.value)
 	}
 	encode := form.Encode()
-	signature := signHmacSha512([]byte(y.apiKeys.Secret), []byte(encode))
+	signature := signHmacSha512([]byte(y.credential.Secret), []byte(encode))
 	body := bytes.NewBufferString(encode)
 	req, err := http.NewRequest("POST", ApiTrade, body)
 	if err != nil {
@@ -294,16 +296,16 @@ func (y *Yobit) callPrivate(method string, args ...CallArg) ([]byte) {
 	}
 
 	req.Header.Add("Content-type", "application/x-www-form-urlencoded")
-	req.Header.Add("Key", y.apiKeys.Key)
+	req.Header.Add("Key", y.credential.Key)
 	req.Header.Add("Sign", signature)
 
 	query := y.query(req)
-	incrementNonce(&nonce)
 	return query
 }
 
 type Yobit struct {
-	client  *http.Client
-	apiKeys *ApiKeys
-	pairs   map[string]PairInfo
+	client     *http.Client
+	credential *ApiCredential
+	pairs      map[string]PairInfo
+	mutex      sync.Mutex
 }

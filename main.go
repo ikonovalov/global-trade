@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	app            = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.3.0")
+	app            = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.3.1")
 	appVerboseFlag = app.Flag("verbose", "Print additional information").Bool()
 
 	cmdInit       = app.Command("init", "Initialize nonce and keys container")

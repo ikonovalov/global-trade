@@ -1,4 +1,10 @@
 ## Yobit cryptocurrency exchange crafted client.
+
+### Build
+```bash
+make
+```
+
 ```
 > ./yobit --help
 usage: yobit [<flags>] <command> [<args> ...]
@@ -8,10 +14,14 @@ Yobit cryptocurrency exchange crafted client.
 Flags:
   --help     Show context-sensitive help (also try --help-long and --help-man).
   --version  Show application version.
+  --verbose  Print additional information
 
 Commands:
   help [<command>...]
     Show help.
+
+  init <secret> <key>
+    Initialize nonce and keys container
 
   markets [<cryptocurrency>]
     (m) Show all listed tickers on the Yobit
@@ -25,17 +35,14 @@ Commands:
   trades [<pairs>] [<limit>]
     (tr) Command returns information about the last transactions of selected pairs.
 
-  wallets [<currency>]
-    (w) Command returns information about user's balances and priviledges of API-key as well as server time.
+  wallets [<base-currency>]
+    (w) Command returns information about user's balances and privileges of API-key as well as server time.
 
   active-orders <pair>
     (ao) Show active orders
 
   trade-history <pair>
     (th) Trade history
-
-  trade <pair> <type> <rate> <amount>
-    (t) Creating new orders for stock exchange trading
 
   buy <pair> <rate> <amount>
     (b) Buy on stock exchange
@@ -44,7 +51,6 @@ Commands:
     (s) Sell on stock exchange
 
   cancel <order_id>
-    (c) Cancells the chosen order
-
+    (c) Cancels the chosen order
 ```
 MIT License

@@ -35,6 +35,9 @@ import (
 )
 
 var (
+	defaultPair     = "btc_usd"
+	defaultCurrency = "usd"
+
 	app            = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.3.1")
 	appVerboseFlag = app.Flag("verbose", "Print additional information").Bool()
 
@@ -46,18 +49,18 @@ var (
 	cmdInfoCurrency = cmdMarkets.Arg("cryptocurrency", "Show markets only for specified currency: btc, eth, usd and so on.").Default("").String()
 
 	cmdTicker     = app.Command("ticker", "(tc) Command provides statistic data for the last 24 hours.").Alias("tc")
-	cmdTickerPair = cmdTicker.Arg("pairs", "Listing ticker name. eth_btc, xem_usd, and so on.").Default("btc_usd").String()
+	cmdTickerPair = cmdTicker.Arg("pairs", "Listing ticker name. eth_btc, xem_usd, and so on.").Default(defaultPair).String()
 
 	cmdDepth      = app.Command("depth", "(d) Command returns information about lists of active orders for selected pairs.").Alias("d")
-	cmdDepthPair  = cmdDepth.Arg("pairs", "eth_btc, xem_usd and so on.").Default("btc_usd").String()
+	cmdDepthPair  = cmdDepth.Arg("pairs", "eth_btc, xem_usd and so on.").Default("defaultPair").String()
 	cmdDepthLimit = cmdDepth.Arg("limit", "Depth output limit").Default("20").Int()
 
 	cmdTrades      = app.Command("trades", "(tr) Command returns information about the last transactions of selected pairs.").Alias("tr")
-	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default("btc_usd").String()
+	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default(defaultPair).String()
 	cmdTradesLimit = cmdTrades.Arg("limit", "Trades output limit.").Default("100").Int()
 
 	cmdWallets             = app.Command("wallets", "(w) Command returns information about user's balances and privileges of API-key as well as server time.").Alias("w")
-	cmdWalletsBaseCurrency = cmdWallets.Arg("base-currency", "Base recalculated currency. Default: usd.").Default("usd").String()
+	cmdWalletsBaseCurrency = cmdWallets.Arg("base-currency", "Base recalculated currency. Default: usd.").Default(defaultCurrency).String()
 
 	cmdActiveOrders    = app.Command("active-orders", "(ao) Show active orders").Alias("ao")
 	cmdActiveOrderPair = cmdActiveOrders.Arg("pair", "doge_usd...").Required().String()

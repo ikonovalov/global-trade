@@ -38,6 +38,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 const (
@@ -47,6 +48,15 @@ const (
 )
 
 func NewYobit() *Yobit {
+	db, err := leveldb.OpenFile("data/db", nil)
+	defer db.Close()
+
+	yobitUrl := url.URL{Scheme: "https", Host: "yobit.net", Path: "/api/3/info"}
+	key, _ := encode(yobitUrl)
+	val, _ := db.Get(key, nil)
+	var cookies []*http.Cookie
+	decode(val, &cookies)
+
 	cloudflare, err := scraper.NewTransport(http.DefaultTransport)
 	if err != nil {
 		fatal(err)
@@ -59,7 +69,15 @@ func NewYobit() *Yobit {
 	}
 
 	yobit := Yobit{client: &http.Client{Transport: cloudflare, Jar: cloudflare.Cookies}, credential: &credential}
+	yobit.client.Jar.SetCookies(&yobitUrl, cookies)
+
 	yobit.PassCloudflare()
+
+	cookies = yobit.client.Jar.Cookies(&yobitUrl)
+
+	val, _ = encode(cookies)
+	db.Put(key, val, nil)
+
 	return &yobit
 }
 

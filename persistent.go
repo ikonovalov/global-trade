@@ -27,7 +27,40 @@ package main
 import (
 	"encoding/gob"
 	"bytes"
+	"github.com/syndtr/goleveldb/leveldb"
+	"net/url"
+	"net/http"
 )
+
+type LocalStorage struct {
+	db *leveldb.DB
+}
+
+func NewStorage() *LocalStorage {
+	ldb, err := leveldb.OpenFile("data/db", nil)
+	if err != nil {
+		fatal(err)
+	}
+	return &LocalStorage{db: ldb}
+}
+
+func (s *LocalStorage) Release()  {
+	s.db.Close()
+}
+
+func (s *LocalStorage) SaveCookies(url *url.URL, cookies []*http.Cookie) {
+	key, _ := encode(url)
+	val, _ := encode(cookies)
+	s.db.Put(key, val, nil)
+}
+
+func (s *LocalStorage) LoadCookies(url *url.URL) []*http.Cookie {
+	key, _ := encode(url)
+	val, _ := s.db.Get(key, nil)
+	var cookies []*http.Cookie
+	decode(val, &cookies)
+	return cookies
+}
 
 func encode(val interface{}) ([]byte, error) {
 	var buf bytes.Buffer

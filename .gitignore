@@ -1,5 +1,4 @@
 .idea
 *.iml
 yobit
-nonce
-credential
+data/

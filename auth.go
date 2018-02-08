@@ -36,8 +36,8 @@ import (
 )
 
 const (
-	credentialFile = "credential"
-	nonceFile      = "nonce"
+	credentialFile = "data/credential"
+	nonceFile      = "data/nonce"
 )
 
 type ApiCredential struct {

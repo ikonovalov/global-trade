@@ -38,25 +38,25 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"github.com/syndtr/goleveldb/leveldb"
 )
 
 const (
-	ApiBase    = "https://yobit.net/api/"
+	YobitUrl   = "https://yobit.net"
+	ApiBase    = YobitUrl + "/api/"
+	ApiTrade   = YobitUrl + "/tapi/"
 	ApiVersion = "3"
-	ApiTrade   = "https://yobit.net/tapi/"
 )
 
+type Yobit struct {
+	site       *url.URL
+	client     *http.Client
+	credential *ApiCredential
+	pairs      map[string]PairInfo
+	mutex      sync.Mutex
+	store      *LocalStorage
+}
+
 func NewYobit() *Yobit {
-	db, err := leveldb.OpenFile("data/db", nil)
-	defer db.Close()
-
-	yobitUrl := url.URL{Scheme: "https", Host: "yobit.net", Path: "/api/3/info"}
-	key, _ := encode(yobitUrl)
-	val, _ := db.Get(key, nil)
-	var cookies []*http.Cookie
-	decode(val, &cookies)
-
 	cloudflare, err := scraper.NewTransport(http.DefaultTransport)
 	if err != nil {
 		fatal(err)
@@ -64,21 +64,37 @@ func NewYobit() *Yobit {
 
 	credential, err := loadApiCredential()
 	if err != nil {
-		log.Println("Credential not set")
+		log.Println("Credential not set. You can't use trading API.")
 		credential = ApiCredential{}
 	}
 
-	yobit := Yobit{client: &http.Client{Transport: cloudflare, Jar: cloudflare.Cookies}, credential: &credential}
-	yobit.client.Jar.SetCookies(&yobitUrl, cookies)
+	yobitUrl, _ := url.Parse(YobitUrl)
 
+	yobit := Yobit{
+		site:       yobitUrl,
+		client:     &http.Client{Transport: cloudflare, Jar: cloudflare.Cookies},
+		credential: &credential,
+		store:      NewStorage(),
+	}
+	yobit.LoadCookies()
 	yobit.PassCloudflare()
-
-	cookies = yobit.client.Jar.Cookies(&yobitUrl)
-
-	val, _ = encode(cookies)
-	db.Put(key, val, nil)
+	yobit.SaveCookies()
 
 	return &yobit
+}
+
+func (y *Yobit) SetCookies(cookies []*http.Cookie) {
+	y.store.SaveCookies(y.site, cookies)
+}
+
+func (y *Yobit) SaveCookies() {
+	cookies := y.client.Jar.Cookies(y.site)
+	y.store.SaveCookies(y.site, cookies)
+}
+
+func (y *Yobit) LoadCookies() {
+	cookies := y.store.LoadCookies(y.site)
+	y.client.Jar.SetCookies(y.site, cookies)
 }
 
 func (y *Yobit) isMarketExists(market string) bool {
@@ -319,11 +335,4 @@ func (y *Yobit) callPrivate(method string, args ...CallArg) []byte {
 
 	query := y.query(req)
 	return query
-}
-
-type Yobit struct {
-	client     *http.Client
-	credential *ApiCredential
-	pairs      map[string]PairInfo
-	mutex      sync.Mutex
 }

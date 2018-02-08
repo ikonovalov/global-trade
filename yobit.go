@@ -106,11 +106,10 @@ func (y *Yobit) fee(market string) float64 {
 	return y.pairs[market].Fee
 }
 
-func (y *Yobit) PassCloudflare() *Yobit {
+func (y *Yobit) PassCloudflare() {
 	channel := make(chan InfoResponse)
 	go y.Info(channel)
 	<-channel
-	return y
 }
 
 // PUBLIC API ===============================

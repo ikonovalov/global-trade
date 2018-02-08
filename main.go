@@ -90,6 +90,7 @@ func main() {
 	}
 
 	yobit := NewYobit()
+	defer yobit.store.Release()
 
 	switch command {
 	case "init":

@@ -172,7 +172,7 @@ func printWallets(groundCurrency string, fundsAndTickers struct {
 
 		var diffGroundCoinPricePercent float64
 		if diffGroundCoinPriceAbs != 0 {
-			diffGroundCoinPricePercent = diffGroundCoinPriceAbs / baseGroundCoinPrice * float64(100)
+			diffGroundCoinPricePercent = (actualGroundPrice - baseGroundPrice) / baseGroundPrice * float64(100)
 		}
 
 		var profitColor func(arg interface{}) Value
@@ -282,12 +282,44 @@ func printOffers(offers Offers) {
 	table.Render()
 }
 
-func printTicker(v Ticker, tickerName string) {
-	spread := v.Sell - v.Buy
-	updated := time.Unix(v.Updated, 0).Format(time.Stamp)
-	fmt.Printf(
-		"%s %-9s H/A/L [%.8f/%.8f/%.8f] Buy[%.8f] Sell[%.8f] Last[%.8f] Spread[%.8f] Volume[%.8f] Current Volume[%.8f] \n",
-		updated, Bold(strings.ToUpper(tickerName)), v.High, Green(v.Avg), v.Low, v.Buy, v.Sell, Green(v.Last), BgRed(spread), v.Vol, v.VolCur)
+func lastHiGreen(first float64, second float64) (func(arg interface{}) Value) {
+	if first > second {
+		return Red
+	} else if first == second {
+		return Gray
+	} else {
+		return Green
+	}
+}
+
+func printTicker(ticker Ticker, tickerName string) {
+	spread := ticker.Sell - ticker.Buy
+	spreadPercent := spread / ticker.Last * float64(100)
+	updated := time.Unix(ticker.Updated, 0).Format(time.Stamp)
+
+	table := tablewriter.NewWriter(os.Stdout)
+	diffLastAvgPercent := (ticker.Last - ticker.Avg) / ticker.Avg * float64(100)
+	diffLowAvgPercent := (ticker.Avg - ticker.Low) / ticker.Low * float64(100)
+
+	table.SetHeader([]string{Bold(tickerName).String(), ""})
+	table.SetColumnColor(bold, norm)
+	table.Append([]string{"HIGH", sprintf64(ticker.High)})
+	table.Append([]string{"LOW", sprintf64(ticker.Low)})
+	table.Append([]string{
+		"AVG", lastHiGreen(ticker.Low, ticker.Avg)(fmt.Sprintf("%8.8f\u00A0%+3.2f", ticker.Avg, diffLowAvgPercent)).String(),
+	})
+	table.Append([]string{
+		"LAST",
+		lastHiGreen(ticker.Avg, ticker.Last)(fmt.Sprintf("%8.8f\u00A0%+3.2f%%", ticker.Last, diffLastAvgPercent)).String(),
+	})
+	table.Append([]string{"BUY", sprintf64(ticker.Buy)})
+	table.Append([]string{"SELL", sprintf64(ticker.Sell)})
+	table.Append([]string{"SPREAD", lastHiGreen(0.5, spreadPercent)(fmt.Sprintf("%s\u00A0%+3.2f%%", sprintf64(spread), spreadPercent)).String()})
+	table.Append([]string{"VOLUME", sprintf64(ticker.Vol)})
+	table.Append([]string{"VOLUME CUR", sprintf64(ticker.VolCur)})
+
+	fmt.Printf("%s\n", updated)
+	table.Render()
 }
 
 func printTrades(trades []Trade) {

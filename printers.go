@@ -79,26 +79,28 @@ func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
 }
 
 func printWallets(groundCurrency string, fundsAndTickers struct {
-	funds   map[string]float64
-	tickers map[string]Ticker
+	funds     map[string]float64
+	freeFunds map[string]float64
+	tickers   map[string]Ticker
 }, updated int64) {
 	// ground means supporting or recalculating currency. For example: "recalculate to an usd or a btc"
 	// setup table
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{
 		"#",
-		"Coin",
-		"Hold",
+		"coin",
+		"hold",
+		"on order",
 		fmt.Sprintf("%s RATE (24AVG)", groundCurrency),
 		fmt.Sprintf("%s RATE (LAST)", groundCurrency),
 		fmt.Sprintf("%s HOLD (24AVG)", groundCurrency),
 		fmt.Sprintf("%s HOLD (LAST)", groundCurrency),
-		"DIFF (ABS)",
-		"DIFF (%)",
-		"COIN",
+		"diff (abs)",
+		"diff (%)",
+		"coin",
 	})
-	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold)
-	table.SetColumnColor(bold, bold, norm, norm, norm, norm, norm, norm, norm, bold)
+	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold)
+	table.SetColumnColor(bold, bold, norm, norm, norm, norm, norm, norm, norm, norm, bold)
 
 	// determinate price multiplication indicator
 	const one = float64(1)
@@ -114,6 +116,16 @@ func printWallets(groundCurrency string, fundsAndTickers struct {
 			return one
 		} else {
 			return fundsAndTickers.tickers[tickerName].Last
+		}
+	}
+	onOrdersVisualFunction := func(ordered float64, volume float64) string {
+		if ordered == 0 {
+			return ""
+		}
+		if ordered-volume == 0 {
+			return Red(fmt.Sprintf("%8.8f", ordered)).String()
+		} else {
+			return fmt.Sprintf("%8.8f", ordered)
 		}
 	}
 
@@ -136,11 +148,15 @@ func printWallets(groundCurrency string, fundsAndTickers struct {
 		losers  = make([]string, 0, len(coins))
 	)
 
-	for idx, coin := range coins {
+	rowCounter := 0
+
+	for _, coin := range coins {
 		volume := fundsAndTickers.funds[coin]
+		onOrders := volume - fundsAndTickers.freeFunds[coin]
 		if volume == 0 {
 			continue
 		}
+		rowCounter++
 		tickerName := fmt.Sprintf("%s_%s", coin, groundCurrency)
 
 		baseGroundPrice := baseGroundPriceFunc(tickerName)
@@ -172,9 +188,10 @@ func printWallets(groundCurrency string, fundsAndTickers struct {
 
 		coinUpperCase := strings.ToUpper(coin)
 		table.Append([]string{
-			fmt.Sprintf("%d", idx),
+			fmt.Sprintf("%d", rowCounter),
 			coinUpperCase,
 			fmt.Sprintf("%.8f", volume),
+			fmt.Sprintf("%s", onOrdersVisualFunction(onOrders, volume)),
 			fmt.Sprintf("%.8f", baseGroundPrice),
 			fmt.Sprintf("%.8f", profitColor(actualGroundPrice)),
 			fmt.Sprintf("%.8f", baseGroundCoinPrice),
@@ -186,6 +203,7 @@ func printWallets(groundCurrency string, fundsAndTickers struct {
 	}
 
 	table.SetFooter([]string{
+		"",
 		"",
 		"",
 		"",

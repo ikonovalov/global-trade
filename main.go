@@ -158,9 +158,10 @@ func main() {
 			go yobit.Tickers24(usdPairs, tickersChan)
 			tickerRs := <-tickersChan
 			fundsAndTickers := struct {
-				funds   map[string]float64
-				tickers map[string]Ticker
-			}{data.FundsIncludeOrders, tickerRs.Tickers}
+				funds map[string]float64
+				freeFunds       map[string]float64
+				tickers         map[string]Ticker
+			}{funds: data.FundsIncludeOrders, freeFunds: data.Funds, tickers: tickerRs.Tickers}
 			printWallets(*cmdWalletsBaseCurrency, fundsAndTickers, data.ServerTime)
 		}
 	case "active-orders":

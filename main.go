@@ -65,6 +65,9 @@ var (
 	cmdActiveOrders    = app.Command("active-orders", "(ao) Show active orders").Alias("ao")
 	cmdActiveOrderPair = cmdActiveOrders.Arg("pair", "doge_usd...").Required().String()
 
+	cmdOrderInfo = app.Command("order", "(o) Detailed information about the chosen order").Alias("o")
+	cmdOrderInfoId = cmdOrderInfo.Arg("id", "Order id").Required().String()
+
 	cmdTradeHistory     = app.Command("trade-history", "(th) Trade history").Alias("th")
 	cmdTradeHistoryPair = cmdTradeHistory.Arg("pair", "doge_usd...").Required().String()
 
@@ -158,9 +161,9 @@ func main() {
 			go yobit.Tickers24(usdPairs, tickersChan)
 			tickerRs := <-tickersChan
 			fundsAndTickers := struct {
-				funds map[string]float64
-				freeFunds       map[string]float64
-				tickers         map[string]Ticker
+				funds     map[string]float64
+				freeFunds map[string]float64
+				tickers   map[string]Ticker
 			}{funds: data.FundsIncludeOrders, freeFunds: data.Funds, tickers: tickerRs.Tickers}
 			printWallets(*cmdWalletsBaseCurrency, fundsAndTickers, data.ServerTime)
 		}
@@ -171,6 +174,13 @@ func main() {
 			activeOrders := <-channel
 			printActiveOrders(activeOrders)
 
+		}
+	case "order":
+		{
+			channel := make(chan OrderInfoResponse)
+			go yobit.OrderInfo(*cmdOrderInfoId, channel)
+			order := <-channel
+			printOrderInfo(order.Orders)
 		}
 	case "trade-history":
 		{

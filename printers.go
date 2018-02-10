@@ -325,14 +325,21 @@ func printTicker(ticker Ticker, tickerName string) {
 func printTradeHistory(history TradeHistoryResponse) {
 	//updated := time.Unix(ticker.Updated, 0).Format(time.Stamp)
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"tx", "pair", "type", "rate", "amount", "time", "IsYourOrder"})
+	table.SetHeader([]string{"tx id", "pair", "type", "rate", "amount", "time", "your order"})
 	table.SetColumnColor(bold, bold, norm, norm, norm, norm, norm)
-	directionMarker := func (dir string) string {
+	directionMarker := func(dir string) string {
 		dir = strings.ToUpper(dir)
 		if dir == "BUY" {
 			return BgGreen(dir).String()
 		} else {
 			return BgRed(dir).String()
+		}
+	}
+	isYourOrderStr := func(flag uint8) string {
+		if flag == 1 {
+			return "YES"
+		} else {
+			return "NO"
 		}
 	}
 	for tx, hOrder := range history.Orders {
@@ -345,7 +352,7 @@ func printTradeHistory(history TradeHistoryResponse) {
 			sprintf64(hOrder.Rate),
 			sprintf64(hOrder.Amount),
 			timestampStr,
-			strconv.FormatUint(hOrder.IsYourOrder, 10),
+			isYourOrderStr(hOrder.IsYourOrder),
 		})
 	}
 	table.Render()
@@ -388,4 +395,33 @@ func printActiveOrders(activeOrders ActiveOrdersResponse) {
 		fmt.Printf("%s ID[%s] %s amount: %.8f rate: %.8f\n",
 			time.Unix(created, 0).Format(time.Stamp), ordId, strings.ToUpper(ord.Type), ord.Amount, ord.Rate)
 	}
+}
+
+func printOrderInfo(orders map[string]OrderInfo) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{
+		"orderid",
+		"pair",
+		"start amount",
+		"amount",
+		"fill",
+		"rate",
+		"created",
+	})
+	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold)
+	table.SetColumnColor(bold, bold, norm, norm, norm, norm, norm)
+	for order, info := range orders {
+		orderTime, _ := strconv.ParseInt(info.Created, 10, 64)
+		fill := math.Abs(info.Amount - info.StartAmount)/info.StartAmount * float64(100)
+		table.Append([]string{
+			order,
+			strings.ToUpper(info.Pair),
+			sprintf64(info.StartAmount),
+			sprintf64(info.Amount),
+			fmt.Sprintf("%3.2f%%", fill),
+			sprintf64(info.Rate),
+			time.Unix(orderTime, 0).Format(time.Stamp),
+		})
+	}
+	table.Render()
 }

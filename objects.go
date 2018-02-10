@@ -162,7 +162,7 @@ type HistoricOrder struct {
 	Amount      float64 `json:"amount"`
 	Rate        float64 `json:"rate"`
 	OrderId     string  `json:"order_id"`
-	IsYourOrder uint64   `json:"is_your_order"`
+	IsYourOrder uint8   `json:"is_your_order"`
 	Timestamp   string  `json:"timestamp"`
 }
 

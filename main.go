@@ -177,7 +177,7 @@ func main() {
 			channel := make(chan TradeHistoryResponse)
 			go yobit.TradeHistory(*cmdTradeHistoryPair, channel)
 			history := <-channel
-			fmt.Println(history)
+			printTradeHistory(history)
 		}
 	case "buy":
 		{

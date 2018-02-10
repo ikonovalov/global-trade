@@ -322,6 +322,35 @@ func printTicker(ticker Ticker, tickerName string) {
 	table.Render()
 }
 
+func printTradeHistory(history TradeHistoryResponse) {
+	//updated := time.Unix(ticker.Updated, 0).Format(time.Stamp)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"tx", "pair", "type", "rate", "amount", "time", "IsYourOrder"})
+	table.SetColumnColor(bold, bold, norm, norm, norm, norm, norm)
+	directionMarker := func (dir string) string {
+		dir = strings.ToUpper(dir)
+		if dir == "BUY" {
+			return BgGreen(dir).String()
+		} else {
+			return BgRed(dir).String()
+		}
+	}
+	for tx, hOrder := range history.Orders {
+		timestamp, _ := strconv.ParseInt(hOrder.Timestamp, 10, 64)
+		timestampStr := time.Unix(timestamp, 0).Format(time.Stamp)
+		table.Append([]string{
+			tx,
+			strings.ToUpper(hOrder.Pair),
+			directionMarker(hOrder.Type),
+			sprintf64(hOrder.Rate),
+			sprintf64(hOrder.Amount),
+			timestampStr,
+			strconv.FormatUint(hOrder.IsYourOrder, 10),
+		})
+	}
+	table.Render()
+}
+
 func printTrades(trades []Trade) {
 	for _, trade := range trades {
 		tm := time.Unix(trade.Timestamp, 0).Format(time.Stamp)

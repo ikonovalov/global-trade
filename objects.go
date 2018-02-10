@@ -161,9 +161,9 @@ type HistoricOrder struct {
 	Type        string  `json:"type"`
 	Amount      float64 `json:"amount"`
 	Rate        float64 `json:"rate"`
-	OrderId     uint64  `json:"order_id"`
-	IsYourOrder uint8   `json:"is_your_order"`
-	Timestamp   uint64  `json:"timestamp"`
+	OrderId     string  `json:"order_id"`
+	IsYourOrder uint64   `json:"is_your_order"`
+	Timestamp   string  `json:"timestamp"`
 }
 
 type TradeResponse struct {

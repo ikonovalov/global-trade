@@ -215,7 +215,7 @@ func main() {
 
 		}
 	default:
-		panic("Unknown command " + command)
+		fatal("Unknown command " + command)
 	}
 
 }

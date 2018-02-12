@@ -342,7 +342,13 @@ func printTradeHistory(history TradeHistoryResponse) {
 			return "NO"
 		}
 	}
-	for tx, hOrder := range history.Orders {
+	txs := make([]string, 0, len(history.Orders))
+	for tx := range history.Orders{
+		txs = append(txs, tx)
+	}
+	sort.Strings(txs)
+	for _, tx := range txs {
+		hOrder := history.Orders[tx]
 		timestamp, _ := strconv.ParseInt(hOrder.Timestamp, 10, 64)
 		timestampStr := time.Unix(timestamp, 0).Format(time.Stamp)
 		table.Append([]string{

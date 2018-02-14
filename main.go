@@ -44,7 +44,7 @@ var (
 	defaultPair     = "btc_usd"
 	defaultCurrency = "usd"
 
-	app            = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.3.2")
+	app            = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.4.0")
 	appVerboseFlag = app.Flag("verbose", "Print additional information").Bool()
 
 	cmdInit       = app.Command("init", "Initialize nonce and keys container")
@@ -71,7 +71,7 @@ var (
 	cmdActiveOrders    = app.Command("active-orders", "(ao) Show active orders").Alias("ao")
 	cmdActiveOrderPair = cmdActiveOrders.Arg("pair", "doge_usd...").Required().String()
 
-	cmdOrderInfo = app.Command("order", "(o) Detailed information about the chosen order").Alias("o")
+	cmdOrderInfo   = app.Command("order", "(o) Detailed information about the chosen order").Alias("o")
 	cmdOrderInfoId = cmdOrderInfo.Arg("id", "Order id").Required().String()
 
 	cmdTradeHistory     = app.Command("trade-history", "(th) Trade history").Alias("th")
@@ -248,10 +248,10 @@ func createCredentialFile(adiCredential yobit.ApiCredential) {
 		if _, err = os.Create(credentialFile); err != nil {
 			panic(err)
 		}
-	} else {
-		data, _ := json.Marshal(adiCredential)
-		if err := ioutil.WriteFile(credentialFile, data, 0644); err != nil {
-			panic(err)
-		}
 	}
+	data, _ := json.Marshal(adiCredential)
+	if err := ioutil.WriteFile(credentialFile, data, 0644); err != nil {
+		panic(err)
+	}
+
 }

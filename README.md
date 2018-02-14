@@ -1,4 +1,4 @@
-## Yobit cryptocurrency exchange crafted client.
+## Cryptocurrency exchange crafted client. Hold, Buy, Sell.
 
 ### Build
 ```bash
@@ -6,7 +6,7 @@ make
 ```
 
 ```
-> ./yobit --help
+> ./gtr --help
 usage: yobit [<flags>] <command> [<args> ...]
 
 Yobit cryptocurrency exchange crafted client.

@@ -1,4 +1,6 @@
+APP_NAME=gtr
+
 all:
-	go build .
+	go build -o ${APP_NAME} .
 race-build:
-	go build -race .
+	go build -o ${PP_NAME} gtr-race .

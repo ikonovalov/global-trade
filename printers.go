@@ -34,6 +34,7 @@ import (
 	"strings"
 	"time"
 	"sort"
+	"github.com/ikonovalov/go-yobit"
 )
 
 var (
@@ -50,7 +51,7 @@ func fatal(v ...interface{}) {
 	os.Exit(1)
 }
 
-func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
+func printInfoRecords(infoResponse yobit.InfoResponse, currencyFilter string) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Market", "Hidden", "Fee", "Min amount", "Min price", "Max price"})
 	bold := tablewriter.Colors{tablewriter.Bold}
@@ -81,7 +82,7 @@ func printInfoRecords(infoResponse InfoResponse, currencyFilter string) {
 func printWallets(groundCurrency string, fundsAndTickers struct {
 	funds     map[string]float64
 	freeFunds map[string]float64
-	tickers   map[string]Ticker
+	tickers   map[string]yobit.Ticker
 }, updated int64) {
 	// ground means supporting or recalculating currency. For example: "recalculate to an usd or a btc"
 	// setup table
@@ -222,7 +223,7 @@ func printWallets(groundCurrency string, fundsAndTickers struct {
 	table.Render()
 }
 
-func printOffers(offers Offers) {
+func printOffers(offers yobit.Offers) {
 	var (
 		asks    = offers.Asks
 		bids    = offers.Bids
@@ -241,7 +242,7 @@ func printOffers(offers Offers) {
 	table.SetHeaderColor(bold, bold, bold, bold, bold)
 	table.SetColumnColor(norm, norm, norm, norm, norm)
 
-	appendOffer := func(row []string, offer Offer, wall bool) []string {
+	appendOffer := func(row []string, offer yobit.Offer, wall bool) []string {
 		qnt := sprintf64(offer.Quantity)
 		if wall {
 			qnt = Bold(qnt).String()
@@ -253,7 +254,7 @@ func printOffers(offers Offers) {
 		return append(row, "", "")
 	}
 
-	passingWall := func(index int, offers []Offer) bool { // TODO Need smarter algorithm!
+	passingWall := func(index int, offers []yobit.Offer) bool { // TODO Need smarter algorithm!
 		if index == len(offers)-1 {
 			return false
 		}
@@ -292,7 +293,7 @@ func lastHiGreen(first float64, second float64) (func(arg interface{}) Value) {
 	}
 }
 
-func printTicker(ticker Ticker, tickerName string) {
+func printTicker(ticker yobit.Ticker, tickerName string) {
 	spread := ticker.Sell - ticker.Buy
 	spreadPercent := spread / ticker.Last * float64(100)
 	updated := time.Unix(ticker.Updated, 0).Format(time.Stamp)
@@ -322,7 +323,7 @@ func printTicker(ticker Ticker, tickerName string) {
 	table.Render()
 }
 
-func printTradeHistory(history TradeHistoryResponse) {
+func printTradeHistory(history yobit.TradeHistoryResponse) {
 	//updated := time.Unix(ticker.Updated, 0).Format(time.Stamp)
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"tx id", "pair", "type", "rate", "amount", "time", "your order"})
@@ -364,7 +365,7 @@ func printTradeHistory(history TradeHistoryResponse) {
 	table.Render()
 }
 
-func printTrades(trades []Trade) {
+func printTrades(trades []yobit.Trade) {
 	for _, trade := range trades {
 		tm := time.Unix(trade.Timestamp, 0).Format(time.Stamp)
 		Colored := BgGreen
@@ -378,7 +379,7 @@ func printTrades(trades []Trade) {
 	}
 }
 
-func printTradeResult(trade TradeResult) {
+func printTradeResult(trade yobit.TradeResult) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{
 		"OrderId",
@@ -395,7 +396,7 @@ func printTradeResult(trade TradeResult) {
 	table.Render()
 }
 
-func printActiveOrders(activeOrders ActiveOrdersResponse) {
+func printActiveOrders(activeOrders yobit.ActiveOrdersResponse) {
 	for ordId, ord := range activeOrders.Orders {
 		created, _ := strconv.ParseInt(ord.Created, 10, 64)
 		fmt.Printf("%s ID[%s] %s amount: %.8f rate: %.8f\n",
@@ -403,7 +404,7 @@ func printActiveOrders(activeOrders ActiveOrdersResponse) {
 	}
 }
 
-func printOrderInfo(orders map[string]OrderInfo) {
+func printOrderInfo(orders map[string]yobit.OrderInfo) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{
 		"orderid",

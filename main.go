@@ -32,6 +32,12 @@ import (
 	"log"
 	"os"
 	"strings"
+	"github.com/ikonovalov/go-yobit"
+	"encoding/json"
+)
+
+const (
+	credentialFile = "data/credential"
 )
 
 var (
@@ -95,28 +101,34 @@ func main() {
 		log.SetOutput(ioutil.Discard)
 	}
 
-	yobit := NewYobit()
-	defer yobit.store.Release()
+	credential, err := loadApiCredential()
+	if err != nil {
+		log.Println("Credential not set. You can't use trading API.")
+		credential = yobit.ApiCredential{}
+	}
+
+	yo := yobit.New(credential)
+	defer yo.Release()
 
 	switch command {
 	case "init":
 		{
-			createCredentialFile(ApiCredential{Secret: *cmdInitSecret, Key: *cmdInitKey})
-			createNonceFileIfNotExists()
-			writeNonce([]byte("1"))
+			createCredentialFile(yobit.ApiCredential{Secret: *cmdInitSecret, Key: *cmdInitKey})
+			yobit.CreateNonceFileIfNotExists()
+			yobit.WriteNonce([]byte("1"))
 		}
 	case "markets":
 		{
-			channel := make(chan InfoResponse)
-			go yobit.Info(channel)
+			channel := make(chan yobit.InfoResponse)
+			go yo.Info(channel)
 			infoResponse := <-channel
 			printInfoRecords(infoResponse, *cmdInfoCurrency)
 			fmt.Printf("\nTotal markets %d\n", len(infoResponse.Pairs))
 		}
 	case "ticker":
 		{
-			channel := make(chan TickerInfoResponse)
-			go yobit.Tickers24([]string{strings.ToLower(*cmdTickerPair)}, channel)
+			channel := make(chan yobit.TickerInfoResponse)
+			go yo.Tickers24([]string{strings.ToLower(*cmdTickerPair)}, channel)
 			tickerResponse := <-channel
 
 			for ticker, v := range tickerResponse.Tickers {
@@ -125,8 +137,8 @@ func main() {
 		}
 	case "depth":
 		{
-			channel := make(chan DepthResponse)
-			go yobit.DepthLimited(strings.ToLower(*cmdDepthPair), *cmdDepthLimit, channel)
+			channel := make(chan yobit.DepthResponse)
+			go yo.DepthLimited(strings.ToLower(*cmdDepthPair), *cmdDepthLimit, channel)
 			depthResponse := <-channel
 			offers := depthResponse.Offers[*cmdDepthPair]
 			printOffers(offers)
@@ -134,8 +146,8 @@ func main() {
 		}
 	case "trades":
 		{
-			channel := make(chan TradesResponse)
-			go yobit.TradesLimited(strings.ToLower(*cmdTradesPair), *cmdTradesLimit, channel)
+			channel := make(chan yobit.TradesResponse)
+			go yo.TradesLimited(strings.ToLower(*cmdTradesPair), *cmdTradesLimit, channel)
 			tradesResponse := <-channel
 			for ticker, trades := range tradesResponse.Trades {
 				fmt.Println(Bold(strings.ToUpper(ticker)))
@@ -145,77 +157,101 @@ func main() {
 		}
 	case "wallets":
 		{
-			channel := make(chan GetInfoResponse)
-			go yobit.GetInfo(channel)
+			channel := make(chan yobit.GetInfoResponse)
+			go yo.GetInfo(channel)
 			getInfoRes := <-channel
 			data := getInfoRes.Data
 			funds := data.FundsIncludeOrders
 			usdPairs := make([]string, 0, len(funds))
 			for coin, volume := range funds {
 				pair := fmt.Sprintf("%s_%s", coin, *cmdWalletsBaseCurrency)
-				if volume > 0 && yobit.isMarketExists(pair) {
+				if volume > 0 && yo.IsMarketExists(pair) {
 					usdPairs = append(usdPairs, pair)
 				}
 			}
-			tickersChan := make(chan TickerInfoResponse)
-			go yobit.Tickers24(usdPairs, tickersChan)
+			if len(usdPairs) == 0 {
+				fatal("No one market found for a coin", *cmdWalletsBaseCurrency)
+			}
+			tickersChan := make(chan yobit.TickerInfoResponse)
+
+			go yo.Tickers24(usdPairs, tickersChan)
 			tickerRs := <-tickersChan
 			fundsAndTickers := struct {
 				funds     map[string]float64
 				freeFunds map[string]float64
-				tickers   map[string]Ticker
+				tickers   map[string]yobit.Ticker
 			}{funds: data.FundsIncludeOrders, freeFunds: data.Funds, tickers: tickerRs.Tickers}
 			printWallets(*cmdWalletsBaseCurrency, fundsAndTickers, data.ServerTime)
 		}
 	case "active-orders":
 		{
-			channel := make(chan ActiveOrdersResponse)
-			go yobit.ActiveOrders(*cmdActiveOrderPair, channel)
+			channel := make(chan yobit.ActiveOrdersResponse)
+			go yo.ActiveOrders(*cmdActiveOrderPair, channel)
 			activeOrders := <-channel
 			printActiveOrders(activeOrders)
 
 		}
 	case "order":
 		{
-			channel := make(chan OrderInfoResponse)
-			go yobit.OrderInfo(*cmdOrderInfoId, channel)
+			channel := make(chan yobit.OrderInfoResponse)
+			go yo.OrderInfo(*cmdOrderInfoId, channel)
 			order := <-channel
 			printOrderInfo(order.Orders)
 		}
 	case "trade-history":
 		{
-			channel := make(chan TradeHistoryResponse)
-			go yobit.TradeHistory(*cmdTradeHistoryPair, channel)
+			channel := make(chan yobit.TradeHistoryResponse)
+			go yo.TradeHistory(*cmdTradeHistoryPair, channel)
 			history := <-channel
 			printTradeHistory(history)
 		}
 	case "buy":
 		{
-			channel := make(chan TradeResponse)
-			go yobit.Trade(*cmdBuyPair, "buy", *cmdBuyRate, *cmdBuyAmount, channel)
+			channel := make(chan yobit.TradeResponse)
+			go yo.Trade(*cmdBuyPair, "buy", *cmdBuyRate, *cmdBuyAmount, channel)
 			trade := <-channel
 			printTradeResult(trade.Result)
 		}
 	case "sell":
 		{
-			channel := make(chan TradeResponse)
-			go yobit.Trade(*cmdSellPair, "sell", *cmdSellRate, *cmdSellAmount, channel)
+			channel := make(chan yobit.TradeResponse)
+			go yo.Trade(*cmdSellPair, "sell", *cmdSellRate, *cmdSellAmount, channel)
 			trade := <-channel
 			printTradeResult(trade.Result)
 		}
 	case "cancel":
 		{
-			channel := make(chan CancelOrderResponse)
-			go yobit.CancelOrder(*cmdCancelOrderOrderId, channel)
+			channel := make(chan yobit.CancelOrderResponse)
+			go yo.CancelOrder(*cmdCancelOrderOrderId, channel)
 			cancelResult := <-channel
 			fmt.Printf("Order %d candeled\n", cancelResult.Result.OrderId)
-		}
-	case "short":
-		{
-
 		}
 	default:
 		fatal("Unknown command " + command)
 	}
 
+}
+
+func loadApiCredential() (yobit.ApiCredential, error) {
+	file, e := ioutil.ReadFile(credentialFile)
+	if e != nil {
+		return yobit.ApiCredential{}, e
+	}
+	var keys yobit.ApiCredential
+	unmarshalError := json.Unmarshal(file, &keys)
+
+	return keys, unmarshalError
+}
+
+func createCredentialFile(adiCredential yobit.ApiCredential) {
+	if _, err := os.Stat(credentialFile); os.IsNotExist(err) {
+		if _, err = os.Create(credentialFile); err != nil {
+			panic(err)
+		}
+	} else {
+		data, _ := json.Marshal(adiCredential)
+		if err := ioutil.WriteFile(credentialFile, data, 0644); err != nil {
+			panic(err)
+		}
+	}
 }

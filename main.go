@@ -33,7 +33,8 @@ import (
 	"os"
 	"strings"
 	"github.com/ikonovalov/go-yobit"
-	"encoding/json"
+	"github.com/ikonovalov/global-trade/bittrex-async"
+	"github.com/toorop/go-bittrex"
 )
 
 const (
@@ -104,11 +105,15 @@ func main() {
 	credential, err := loadApiCredential()
 	if err != nil {
 		log.Println("Credential not set. You can't use trading API.")
-		credential = yobit.ApiCredential{}
+		credential = GlobalCredentials{}
 	}
 
-	yo := yobit.New(credential)
+	// setup Yobit
+	yo := yobit.New(credential.Yobit)
 	defer yo.Release()
+
+	// setup Bittrex
+	btrx := bittrex_async.New(credential.Bittrex)
 
 	switch command {
 	case "init":
@@ -157,10 +162,16 @@ func main() {
 		}
 	case "wallets":
 		{
-			channel := make(chan yobit.GetInfoResponse)
-			go yo.GetInfo(channel)
-			getInfoRes := <-channel
-			data := getInfoRes.Data
+			channelYobit := make(chan yobit.GetInfoResponse)
+			channelBittrex := make(chan []bittrex.Balance)
+
+			go yo.GetInfo(channelYobit)
+			go btrx.GetBalancesAsync(channelBittrex)
+
+			yobitGetInfoRes := <-channelYobit
+			bittrexBalances := <-channelBittrex
+
+			data := yobitGetInfoRes.Data
 			funds := data.FundsIncludeOrders
 			usdPairs := make([]string, 0, len(funds))
 			for coin, volume := range funds {
@@ -172,10 +183,15 @@ func main() {
 			if len(usdPairs) == 0 {
 				fatal("No one market found for a coin", *cmdWalletsBaseCurrency)
 			}
-			tickersChan := make(chan yobit.TickerInfoResponse)
 
+			// Requests Yobit's tickers
+			tickersChan := make(chan yobit.TickerInfoResponse)
 			go yo.Tickers24(usdPairs, tickersChan)
 			tickerRs := <-tickersChan
+
+			// Requests Bittrex tickers
+
+
 			fundsAndTickers := struct {
 				funds     map[string]float64
 				freeFunds map[string]float64
@@ -228,30 +244,6 @@ func main() {
 		}
 	default:
 		fatal("Unknown command " + command)
-	}
-
-}
-
-func loadApiCredential() (yobit.ApiCredential, error) {
-	file, e := ioutil.ReadFile(credentialFile)
-	if e != nil {
-		return yobit.ApiCredential{}, e
-	}
-	var keys yobit.ApiCredential
-	unmarshalError := json.Unmarshal(file, &keys)
-
-	return keys, unmarshalError
-}
-
-func createCredentialFile(adiCredential yobit.ApiCredential) {
-	if _, err := os.Stat(credentialFile); os.IsNotExist(err) {
-		if _, err = os.Create(credentialFile); err != nil {
-			panic(err)
-		}
-	}
-	data, _ := json.Marshal(adiCredential)
-	if err := ioutil.WriteFile(credentialFile, data, 0644); err != nil {
-		panic(err)
 	}
 
 }

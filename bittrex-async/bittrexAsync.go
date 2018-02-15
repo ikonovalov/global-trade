@@ -31,6 +31,7 @@ import (
 	"time"
 	"net/http"
 	"github.com/ikonovalov/go-cloudflare-scraper"
+	"log"
 )
 
 type BittrexAsync struct {
@@ -61,11 +62,31 @@ func (ba *BittrexAsync) MarketsAsync(ch chan<- []bittrex.Market) {
 }
 
 func (ba *BittrexAsync) GetBalancesAsync(ch chan []bittrex.Balance) {
+	start := time.Now()
 	balances, err := ba.GetBalances()
+	elapsed := time.Since(start)
+	log.Printf("Bittrex.GetBalances took %s", elapsed)
 	if err != nil {
 		fatal(err)
 	}
 	ch <- balances
+}
+
+func (ba *BittrexAsync) GetTickers(ch chan<- []bittrex.Ticker, markets ...string) {
+	if len(markets) == 0 {
+		ch <- []bittrex.Ticker{}
+		return
+	}
+	tickerRs := make([]bittrex.Ticker, 0, len(markets))
+	for _, m := range markets {
+		ticker, err := ba.GetTicker(m)
+		if err != nil {
+			fatal(err)
+		}
+		tickerRs = append(tickerRs, ticker)
+	}
+	ch <- tickerRs
+	return
 }
 
 func fatal(v ...interface{}) {

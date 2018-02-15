@@ -190,7 +190,15 @@ func main() {
 			tickerRs := <-tickersChan
 
 			// Requests Bittrex tickers
-
+			for _, bb := range bittrexBalances {
+				balF64, _ := bb.Balance.Float64()
+				avaF64, _ := bb.Available.Float64()
+				//market := fmt.Sprintf("%s-%s", "ETH", bb.Currency)
+				//go btrx.GetTickers(btrxTickerCh, market)
+				//tcr := <- btrxTickerCh
+				//tcrLast, _ := tcr[0].Last.Float64()
+				fmt.Printf("%s %8.8f %8.8f\n", bb.Currency, balF64, avaF64)
+			}
 
 			fundsAndTickers := struct {
 				funds     map[string]float64

@@ -79,6 +79,38 @@ func printInfoRecords(infoResponse yobit.InfoResponse, currencyFilter string) {
 	table.Render()
 }
 
+type FundsLayout struct {
+	Funds          map[string]float64
+	AvailableFunds map[string]float64
+	Tickers        map[string]TickerLayout
+}
+
+type TickerLayout struct {
+	High    float64
+	Low     float64
+	Avg     float64
+	Vol     float64
+	VolCur  float64
+	Buy     float64
+	Sell    float64
+	Last    float64
+	Updated int64
+}
+
+func tickerFromYobit(yt yobit.Ticker) TickerLayout {
+	return TickerLayout{
+		High: yt.High,
+		Low: yt.Low,
+		Avg: yt.Avg,
+		Vol: yt.Vol,
+		VolCur: yt.VolCur,
+		Buy: yt.Buy,
+		Sell: yt.Sell,
+		Last: yt.Last,
+		Updated: yt.Updated,
+	}
+}
+
 func printWallets(groundCurrency string, fundsAndTickers struct {
 	funds     map[string]float64
 	freeFunds map[string]float64
@@ -344,7 +376,7 @@ func printTradeHistory(history yobit.TradeHistoryResponse) {
 		}
 	}
 	txs := make([]string, 0, len(history.Orders))
-	for tx := range history.Orders{
+	for tx := range history.Orders {
 		txs = append(txs, tx)
 	}
 	sort.Strings(txs)
@@ -419,7 +451,7 @@ func printOrderInfo(orders map[string]yobit.OrderInfo) {
 	table.SetColumnColor(bold, bold, norm, norm, norm, norm, norm)
 	for order, info := range orders {
 		orderTime, _ := strconv.ParseInt(info.Created, 10, 64)
-		fill := math.Abs(info.Amount - info.StartAmount)/info.StartAmount * float64(100)
+		fill := math.Abs(info.Amount-info.StartAmount) / info.StartAmount * float64(100)
 		table.Append([]string{
 			order,
 			strings.ToUpper(info.Pair),

@@ -111,11 +111,15 @@ func tickerFromYobit(yt yobit.Ticker) TickerLayout {
 	}
 }
 
-func printWallets(groundCurrency string, fundsAndTickers struct {
-	funds     map[string]float64
-	freeFunds map[string]float64
-	tickers   map[string]yobit.Ticker
-}, updated int64) {
+func tickerMapFromYobit(ytm map[string]yobit.Ticker) map[string]TickerLayout {
+	rs := make(map[string]TickerLayout)
+	for k,v := range ytm {
+		rs[k] = tickerFromYobit(v)
+	}
+	return rs
+}
+
+func printWallets(groundCurrency string, fundsAndTickers FundsLayout, updated int64) {
 	// ground means supporting or recalculating currency. For example: "recalculate to an usd or a btc"
 	// setup table
 	table := tablewriter.NewWriter(os.Stdout)
@@ -141,14 +145,14 @@ func printWallets(groundCurrency string, fundsAndTickers struct {
 		if tickerName == fmt.Sprintf("%s_%[1]s", groundCurrency) {
 			return one
 		} else {
-			return fundsAndTickers.tickers[tickerName].Avg
+			return fundsAndTickers.Tickers[tickerName].Avg
 		}
 	}
 	actualGroundPriceFunc := func(tickerName string) float64 {
 		if tickerName == fmt.Sprintf("%s_%[1]s", groundCurrency) {
 			return one
 		} else {
-			return fundsAndTickers.tickers[tickerName].Last
+			return fundsAndTickers.Tickers[tickerName].Last
 		}
 	}
 	onOrdersVisualFunction := func(ordered float64, volume float64) string {
@@ -170,8 +174,8 @@ func printWallets(groundCurrency string, fundsAndTickers struct {
 	)
 
 	// order coins by name
-	coins := make([]string, 0, len(fundsAndTickers.funds))
-	for c := range fundsAndTickers.funds {
+	coins := make([]string, 0, len(fundsAndTickers.Funds))
+	for c := range fundsAndTickers.Funds {
 		coins = append(coins, c)
 	}
 	sort.Strings(coins)
@@ -184,8 +188,8 @@ func printWallets(groundCurrency string, fundsAndTickers struct {
 	rowCounter := 0
 
 	for _, coin := range coins {
-		volume := fundsAndTickers.funds[coin]
-		onOrders := volume - fundsAndTickers.freeFunds[coin]
+		volume := fundsAndTickers.Funds[coin]
+		onOrders := volume - fundsAndTickers.AvailableFunds[coin]
 		if volume == 0 {
 			continue
 		}

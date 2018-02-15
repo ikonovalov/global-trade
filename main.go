@@ -200,11 +200,11 @@ func main() {
 				fmt.Printf("%s %8.8f %8.8f\n", bb.Currency, balF64, avaF64)
 			}
 
-			fundsAndTickers := struct {
-				funds     map[string]float64
-				freeFunds map[string]float64
-				tickers   map[string]yobit.Ticker
-			}{funds: data.FundsIncludeOrders, freeFunds: data.Funds, tickers: tickerRs.Tickers}
+			fundsAndTickers := FundsLayout{
+				Funds:          data.FundsIncludeOrders,
+				AvailableFunds: data.Funds,
+				Tickers: tickerMapFromYobit(tickerRs.Tickers),
+			}
 			printWallets(*cmdWalletsBaseCurrency, fundsAndTickers, data.ServerTime)
 		}
 	case "active-orders":

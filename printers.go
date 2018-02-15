@@ -79,47 +79,7 @@ func printInfoRecords(infoResponse yobit.InfoResponse, currencyFilter string) {
 	table.Render()
 }
 
-type FundsLayout struct {
-	Funds          map[string]float64
-	AvailableFunds map[string]float64
-	Tickers        map[string]TickerLayout
-}
-
-type TickerLayout struct {
-	High    float64
-	Low     float64
-	Avg     float64
-	Vol     float64
-	VolCur  float64
-	Buy     float64
-	Sell    float64
-	Last    float64
-	Updated int64
-}
-
-func tickerFromYobit(yt yobit.Ticker) TickerLayout {
-	return TickerLayout{
-		High: yt.High,
-		Low: yt.Low,
-		Avg: yt.Avg,
-		Vol: yt.Vol,
-		VolCur: yt.VolCur,
-		Buy: yt.Buy,
-		Sell: yt.Sell,
-		Last: yt.Last,
-		Updated: yt.Updated,
-	}
-}
-
-func tickerMapFromYobit(ytm map[string]yobit.Ticker) map[string]TickerLayout {
-	rs := make(map[string]TickerLayout)
-	for k,v := range ytm {
-		rs[k] = tickerFromYobit(v)
-	}
-	return rs
-}
-
-func printWallets(groundCurrency string, fundsAndTickers FundsLayout, updated int64) {
+func printWallets(groundCurrency string, balances Balances, updated int64) {
 	// ground means supporting or recalculating currency. For example: "recalculate to an usd or a btc"
 	// setup table
 	table := tablewriter.NewWriter(os.Stdout)
@@ -145,14 +105,14 @@ func printWallets(groundCurrency string, fundsAndTickers FundsLayout, updated in
 		if tickerName == fmt.Sprintf("%s_%[1]s", groundCurrency) {
 			return one
 		} else {
-			return fundsAndTickers.Tickers[tickerName].Avg
+			return balances.Tickers[tickerName].Avg
 		}
 	}
 	actualGroundPriceFunc := func(tickerName string) float64 {
 		if tickerName == fmt.Sprintf("%s_%[1]s", groundCurrency) {
 			return one
 		} else {
-			return fundsAndTickers.Tickers[tickerName].Last
+			return balances.Tickers[tickerName].Last
 		}
 	}
 	onOrdersVisualFunction := func(ordered float64, volume float64) string {
@@ -174,8 +134,8 @@ func printWallets(groundCurrency string, fundsAndTickers FundsLayout, updated in
 	)
 
 	// order coins by name
-	coins := make([]string, 0, len(fundsAndTickers.Funds))
-	for c := range fundsAndTickers.Funds {
+	coins := make([]string, 0, len(balances.Funds))
+	for c := range balances.Funds {
 		coins = append(coins, c)
 	}
 	sort.Strings(coins)
@@ -188,8 +148,8 @@ func printWallets(groundCurrency string, fundsAndTickers FundsLayout, updated in
 	rowCounter := 0
 
 	for _, coin := range coins {
-		volume := fundsAndTickers.Funds[coin]
-		onOrders := volume - fundsAndTickers.AvailableFunds[coin]
+		volume := balances.Funds[coin]
+		onOrders := volume - balances.AvailableFunds[coin]
 		if volume == 0 {
 			continue
 		}

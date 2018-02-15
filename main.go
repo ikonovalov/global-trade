@@ -169,7 +169,7 @@ func main() {
 			go btrx.GetBalancesAsync(channelBittrex)
 
 			yobitGetInfoRes := <-channelYobit
-			bittrexBalances := <-channelBittrex
+			bittrexBalancesLs := <-channelBittrex
 
 			data := yobitGetInfoRes.Data
 			funds := data.FundsIncludeOrders
@@ -190,22 +190,27 @@ func main() {
 			tickerRs := <-tickersChan
 
 			// Requests Bittrex tickers
-			for _, bb := range bittrexBalances {
+			bittrexBalances := Balances{
+				Exchange:       Exchange{"Bittrex", "https://bittrex.com"},
+				Funds:          make(map[string]float64),
+				AvailableFunds: make(map[string]float64),
+				Tickers:        make(map[string]Ticker),
+			}
+			for _, bb := range bittrexBalancesLs {
 				balF64, _ := bb.Balance.Float64()
 				avaF64, _ := bb.Available.Float64()
-				//market := fmt.Sprintf("%s-%s", "ETH", bb.Currency)
-				//go btrx.GetTickers(btrxTickerCh, market)
-				//tcr := <- btrxTickerCh
-				//tcrLast, _ := tcr[0].Last.Float64()
+				bittrexBalances.Funds[bb.Currency] = balF64
+				bittrexBalances.AvailableFunds[bb.Currency] = avaF64
 				fmt.Printf("%s %8.8f %8.8f\n", bb.Currency, balF64, avaF64)
 			}
 
-			fundsAndTickers := FundsLayout{
+			yobitBalances := Balances{
+				Exchange:       Exchange{"Yobit", yobit.Url},
 				Funds:          data.FundsIncludeOrders,
 				AvailableFunds: data.Funds,
-				Tickers: tickerMapFromYobit(tickerRs.Tickers),
+				Tickers:        tickerMapFromYobit(tickerRs.Tickers),
 			}
-			printWallets(*cmdWalletsBaseCurrency, fundsAndTickers, data.ServerTime)
+			printWallets(*cmdWalletsBaseCurrency, yobitBalances, data.ServerTime)
 		}
 	case "active-orders":
 		{

@@ -24,12 +24,15 @@
 
 package main
 
-import "github.com/ikonovalov/go-yobit"
+import (
+	"github.com/ikonovalov/go-yobit"
+	w "github.com/ikonovalov/global-trade/wrappers"
+)
 
 // Yobit converters ================================================
 
-func tickerFromYobit(yt yobit.Ticker) Ticker {
-	return Ticker{
+func tickerFromYobit(yt yobit.Ticker) w.Ticker {
+	return w.Ticker{
 		High: yt.High,
 		Low: yt.Low,
 		Avg: yt.Avg,
@@ -42,8 +45,8 @@ func tickerFromYobit(yt yobit.Ticker) Ticker {
 	}
 }
 
-func tickerMapFromYobit(ytm map[string]yobit.Ticker) map[string]Ticker {
-	rs := make(map[string]Ticker)
+func tickerMapFromYobit(ytm map[string]yobit.Ticker) map[string]w.Ticker {
+	rs := make(map[string]w.Ticker)
 	for k,v := range ytm {
 		rs[k] = tickerFromYobit(v)
 	}

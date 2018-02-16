@@ -22,9 +22,62 @@
  * SOFTWARE.
  */
 
-package bittrex_async
+package wrappers
 
-type ApiCredential struct {
+import (
+	"github.com/ikonovalov/go-yobit"
+)
+
+type YobitWrapper struct {
+	yobit *yobit.Yobit
+}
+
+type YobitApiCredential struct {
 	Key    string `json:"key"`
 	Secret string `json:"secret"`
+}
+
+func NewYobit(credential YobitApiCredential) *YobitWrapper {
+	yobt := yobit.New(yobit.ApiCredential{
+		Key: credential.Key,
+		Secret: credential.Secret,
+	})
+	return &YobitWrapper{yobit:yobt}
+}
+
+func (yw *YobitWrapper) Release() {
+	yw.yobit.Release()
+}
+
+func (yw *YobitWrapper) GetBalances(ch chan<- Balances) {
+	channelYobit := make(chan yobit.GetInfoResponse)
+	go yw.yobit.GetInfo(channelYobit)
+	yobitGetInfoRes := <-channelYobit
+	data := yobitGetInfoRes.Data
+
+	yobitBalances := Balances{
+		Exchange:       Exchange{Name: "Yobit", Link: yobit.Url},
+		Funds:          data.FundsIncludeOrders,
+		AvailableFunds: data.Funds,
+		Tickers:        make(map[string]Ticker),
+	}
+	ch <- yobitBalances
+}
+
+func tickerMapFromYobit(ytm map[string]yobit.Ticker) map[string]Ticker {
+	rs := make(map[string]Ticker)
+	for k,yt := range ytm {
+		rs[k] = Ticker {
+			High: yt.High,
+			Low: yt.Low,
+			Avg: yt.Avg,
+			Vol: yt.Vol,
+			VolCur: yt.VolCur,
+			Buy: yt.Buy,
+			Sell: yt.Sell,
+			Last: yt.Last,
+			Updated: yt.Updated,
+		}
+	}
+	return rs
 }

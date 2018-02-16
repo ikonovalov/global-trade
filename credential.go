@@ -29,14 +29,14 @@ import (
 	"encoding/json"
 	"os"
 	"github.com/ikonovalov/go-yobit"
-	"github.com/ikonovalov/global-trade/bittrex-async"
+	"github.com/ikonovalov/global-trade/wrappers"
 )
 
 type GlobalCredentials struct {
-	Version    uint16                      `json:"version"`
-	Encryption bool                        `json:"encryption"`
-	Yobit      yobit.ApiCredential         `json:"yobit,omitempty"`
-	Bittrex    bittrex_async.ApiCredential `json:"bittrex,omitempty"`
+	Version    uint16                        `json:"version"`
+	Encryption bool                          `json:"encryption"`
+	Yobit      wrappers.YobitApiCredential   `json:"yobit,omitempty"`
+	Bittrex    wrappers.BittrexApiCredential `json:"bittrex,omitempty"`
 }
 
 func loadApiCredential() (GlobalCredentials, error) {

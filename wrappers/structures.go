@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package main
+package wrappers
 
 type Balances struct {
 	Exchange       Exchange

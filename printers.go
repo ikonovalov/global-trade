@@ -35,6 +35,7 @@ import (
 	"time"
 	"sort"
 	"github.com/ikonovalov/go-yobit"
+	w "github.com/ikonovalov/global-trade/wrappers"
 )
 
 var (
@@ -79,7 +80,7 @@ func printInfoRecords(infoResponse yobit.InfoResponse, currencyFilter string) {
 	table.Render()
 }
 
-func printWallets(groundCurrency string, balances Balances, updated int64) {
+func printWallets(groundCurrency string, balances w.Balances, updated int64) {
 	// ground means supporting or recalculating currency. For example: "recalculate to an usd or a btc"
 	// setup table
 	table := tablewriter.NewWriter(os.Stdout)

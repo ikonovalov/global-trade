@@ -22,30 +22,35 @@
  * SOFTWARE.
  */
 
-package bittrex_async
+package wrappers
 
 import (
 	"github.com/toorop/go-bittrex"
+	"time"
+	"log"
 	"fmt"
 	"os"
-	"time"
-	"net/http"
 	"github.com/ikonovalov/go-cloudflare-scraper"
-	"log"
+	"net/http"
 )
 
-type BittrexAsync struct {
-	*bittrex.Bittrex
+type BittrexWrapper struct {
+	bittrex *bittrex.Bittrex
 }
 
-func New(credential ApiCredential) *BittrexAsync {
+type BittrexApiCredential struct {
+	Key    string `json:"key"`
+	Secret string `json:"secret"`
+}
+
+func NewBittrex(credential BittrexApiCredential) *BittrexWrapper {
 	cloudflare, err := scraper.NewTransport(http.DefaultTransport)
 	if err != nil {
 		fatal(err)
 	}
 	httpClient := &http.Client{Transport: cloudflare, Jar: cloudflare.Cookies, Timeout: time.Second * 60}
-	ba := BittrexAsync{
-		Bittrex: bittrex.NewWithCustomHttpClient(
+	ba := BittrexWrapper{
+		bittrex: bittrex.NewWithCustomHttpClient(
 			credential.Key, credential.Secret,
 			httpClient,
 		),
@@ -53,40 +58,27 @@ func New(credential ApiCredential) *BittrexAsync {
 	return &ba
 }
 
-func (ba *BittrexAsync) MarketsAsync(ch chan<- []bittrex.Market) {
-	markets, err := ba.GetMarkets()
-	if err != nil {
-		fatal(err)
-	}
-	ch <- markets
-}
-
-func (ba *BittrexAsync) GetBalancesAsync(ch chan []bittrex.Balance) {
+func (bw *BittrexWrapper) GetBalances( ch chan<- Balances) {
 	start := time.Now()
-	balances, err := ba.GetBalances()
+	balances, err := bw.bittrex.GetBalances()
 	elapsed := time.Since(start)
 	log.Printf("Bittrex.GetBalances took %s", elapsed)
 	if err != nil {
 		fatal(err)
 	}
-	ch <- balances
-}
-
-func (ba *BittrexAsync) GetTickers(ch chan<- []bittrex.Ticker, markets ...string) {
-	if len(markets) == 0 {
-		ch <- []bittrex.Ticker{}
-		return
+	canonicalBalances := Balances {
+		Exchange:       Exchange{Name: "Bittrex", Link: "https://bittrex.com"},
+		Funds:          make(map[string]float64),
+		AvailableFunds: make(map[string]float64),
+		Tickers:        make(map[string]Ticker),
 	}
-	tickerRs := make([]bittrex.Ticker, 0, len(markets))
-	for _, m := range markets {
-		ticker, err := ba.GetTicker(m)
-		if err != nil {
-			fatal(err)
-		}
-		tickerRs = append(tickerRs, ticker)
+	for _, bb := range balances {
+		balF64, _ := bb.Balance.Float64()
+		avaF64, _ := bb.Available.Float64()
+		canonicalBalances.Funds[bb.Currency] = balF64
+		canonicalBalances.AvailableFunds[bb.Currency] = avaF64
 	}
-	ch <- tickerRs
-	return
+	ch <- canonicalBalances
 }
 
 func fatal(v ...interface{}) {

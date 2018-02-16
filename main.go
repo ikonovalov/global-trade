@@ -33,8 +33,8 @@ import (
 	"os"
 	"strings"
 	"github.com/ikonovalov/go-yobit"
-	"github.com/ikonovalov/global-trade/bittrex-async"
-	"github.com/toorop/go-bittrex"
+	"time"
+	wr "github.com/ikonovalov/global-trade/wrappers"
 )
 
 const (
@@ -109,11 +109,11 @@ func main() {
 	}
 
 	// setup Yobit
-	yo := yobit.New(credential.Yobit)
-	defer yo.Release()
+	yobt := yobit.New(yobit.ApiCredential{Key: credential.Yobit.Key, Secret: credential.Yobit.Secret})
+	defer yobt.Release()
 
-	// setup Bittrex
-	btrx := bittrex_async.New(credential.Bittrex)
+	yob2 := wr.NewYobit(credential.Yobit)
+	btrx := wr.NewBittrex(credential.Bittrex)
 
 	switch command {
 	case "init":
@@ -125,7 +125,7 @@ func main() {
 	case "markets":
 		{
 			channel := make(chan yobit.InfoResponse)
-			go yo.Info(channel)
+			go yobt.Info(channel)
 			infoResponse := <-channel
 			printInfoRecords(infoResponse, *cmdInfoCurrency)
 			fmt.Printf("\nTotal markets %d\n", len(infoResponse.Pairs))
@@ -133,7 +133,7 @@ func main() {
 	case "ticker":
 		{
 			channel := make(chan yobit.TickerInfoResponse)
-			go yo.Tickers24([]string{strings.ToLower(*cmdTickerPair)}, channel)
+			go yobt.Tickers24([]string{strings.ToLower(*cmdTickerPair)}, channel)
 			tickerResponse := <-channel
 
 			for ticker, v := range tickerResponse.Tickers {
@@ -143,7 +143,7 @@ func main() {
 	case "depth":
 		{
 			channel := make(chan yobit.DepthResponse)
-			go yo.DepthLimited(strings.ToLower(*cmdDepthPair), *cmdDepthLimit, channel)
+			go yobt.DepthLimited(strings.ToLower(*cmdDepthPair), *cmdDepthLimit, channel)
 			depthResponse := <-channel
 			offers := depthResponse.Offers[*cmdDepthPair]
 			printOffers(offers)
@@ -152,7 +152,7 @@ func main() {
 	case "trades":
 		{
 			channel := make(chan yobit.TradesResponse)
-			go yo.TradesLimited(strings.ToLower(*cmdTradesPair), *cmdTradesLimit, channel)
+			go yobt.TradesLimited(strings.ToLower(*cmdTradesPair), *cmdTradesLimit, channel)
 			tradesResponse := <-channel
 			for ticker, trades := range tradesResponse.Trades {
 				fmt.Println(Bold(strings.ToUpper(ticker)))
@@ -162,60 +162,34 @@ func main() {
 		}
 	case "wallets":
 		{
-			channelYobit := make(chan yobit.GetInfoResponse)
-			channelBittrex := make(chan []bittrex.Balance)
+			channelYobit := make(chan wr.Balances)
+			channelBittrex := make(chan wr.Balances)
 
-			go yo.GetInfo(channelYobit)
-			go btrx.GetBalancesAsync(channelBittrex)
+			go yob2.GetBalances(channelYobit)
+			go btrx.GetBalances(channelBittrex)
 
-			yobitGetInfoRes := <-channelYobit
-			bittrexBalancesLs := <-channelBittrex
+			yobitBalances := <-channelYobit
+			bittrexBalances := <-channelBittrex
+			fmt.Println(bittrexBalances)
 
-			data := yobitGetInfoRes.Data
-			funds := data.FundsIncludeOrders
-			usdPairs := make([]string, 0, len(funds))
-			for coin, volume := range funds {
-				pair := fmt.Sprintf("%s_%s", coin, *cmdWalletsBaseCurrency)
-				if volume > 0 && yo.IsMarketExists(pair) {
-					usdPairs = append(usdPairs, pair)
-				}
-			}
+			funds := yobitBalances.Funds
+			usdPairs := createMarketPairsForYobit(funds, *cmdWalletsBaseCurrency, yobt)
 			if len(usdPairs) == 0 {
 				fatal("No one market found for a coin", *cmdWalletsBaseCurrency)
 			}
 
 			// Requests Yobit's tickers
 			tickersChan := make(chan yobit.TickerInfoResponse)
-			go yo.Tickers24(usdPairs, tickersChan)
+			go yobt.Tickers24(usdPairs, tickersChan)
 			tickerRs := <-tickersChan
 
-			// Requests Bittrex tickers
-			bittrexBalances := Balances{
-				Exchange:       Exchange{"Bittrex", "https://bittrex.com"},
-				Funds:          make(map[string]float64),
-				AvailableFunds: make(map[string]float64),
-				Tickers:        make(map[string]Ticker),
-			}
-			for _, bb := range bittrexBalancesLs {
-				balF64, _ := bb.Balance.Float64()
-				avaF64, _ := bb.Available.Float64()
-				bittrexBalances.Funds[bb.Currency] = balF64
-				bittrexBalances.AvailableFunds[bb.Currency] = avaF64
-				fmt.Printf("%s %8.8f %8.8f\n", bb.Currency, balF64, avaF64)
-			}
-
-			yobitBalances := Balances{
-				Exchange:       Exchange{"Yobit", yobit.Url},
-				Funds:          data.FundsIncludeOrders,
-				AvailableFunds: data.Funds,
-				Tickers:        tickerMapFromYobit(tickerRs.Tickers),
-			}
-			printWallets(*cmdWalletsBaseCurrency, yobitBalances, data.ServerTime)
+			yobitBalances.Tickers = tickerMapFromYobit(tickerRs.Tickers)
+			printWallets(*cmdWalletsBaseCurrency, yobitBalances, time.Now().Unix())
 		}
 	case "active-orders":
 		{
 			channel := make(chan yobit.ActiveOrdersResponse)
-			go yo.ActiveOrders(*cmdActiveOrderPair, channel)
+			go yobt.ActiveOrders(*cmdActiveOrderPair, channel)
 			activeOrders := <-channel
 			printActiveOrders(activeOrders)
 
@@ -223,35 +197,35 @@ func main() {
 	case "order":
 		{
 			channel := make(chan yobit.OrderInfoResponse)
-			go yo.OrderInfo(*cmdOrderInfoId, channel)
+			go yobt.OrderInfo(*cmdOrderInfoId, channel)
 			order := <-channel
 			printOrderInfo(order.Orders)
 		}
 	case "trade-history":
 		{
 			channel := make(chan yobit.TradeHistoryResponse)
-			go yo.TradeHistory(*cmdTradeHistoryPair, channel)
+			go yobt.TradeHistory(*cmdTradeHistoryPair, channel)
 			history := <-channel
 			printTradeHistory(history)
 		}
 	case "buy":
 		{
 			channel := make(chan yobit.TradeResponse)
-			go yo.Trade(*cmdBuyPair, "buy", *cmdBuyRate, *cmdBuyAmount, channel)
+			go yobt.Trade(*cmdBuyPair, "buy", *cmdBuyRate, *cmdBuyAmount, channel)
 			trade := <-channel
 			printTradeResult(trade.Result)
 		}
 	case "sell":
 		{
 			channel := make(chan yobit.TradeResponse)
-			go yo.Trade(*cmdSellPair, "sell", *cmdSellRate, *cmdSellAmount, channel)
+			go yobt.Trade(*cmdSellPair, "sell", *cmdSellRate, *cmdSellAmount, channel)
 			trade := <-channel
 			printTradeResult(trade.Result)
 		}
 	case "cancel":
 		{
 			channel := make(chan yobit.CancelOrderResponse)
-			go yo.CancelOrder(*cmdCancelOrderOrderId, channel)
+			go yobt.CancelOrder(*cmdCancelOrderOrderId, channel)
 			cancelResult := <-channel
 			fmt.Printf("Order %d candeled\n", cancelResult.Result.OrderId)
 		}
@@ -259,4 +233,14 @@ func main() {
 		fatal("Unknown command " + command)
 	}
 
+}
+func createMarketPairsForYobit(funds map[string]float64, baseCurrency string, yobt *yobit.Yobit) []string {
+	usdPairs := make([]string, 0, len(funds))
+	for coin, volume := range funds {
+		pair := fmt.Sprintf("%s_%s", coin, baseCurrency)
+		if volume > 0 && yobt.IsMarketExists(pair) {
+			usdPairs = append(usdPairs, pair)
+		}
+	}
+	return usdPairs
 }

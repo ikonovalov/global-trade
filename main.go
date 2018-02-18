@@ -26,14 +26,11 @@ package main
 
 import (
 	"fmt"
-	. "github.com/logrusorgru/aurora"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"io/ioutil"
 	"log"
 	"os"
-	"strings"
 	"github.com/ikonovalov/go-yobit"
-	"time"
 	wr "github.com/ikonovalov/global-trade/wrappers"
 )
 
@@ -109,11 +106,14 @@ func main() {
 	}
 
 	// setup Yobit
-	yobt := yobit.New(yobit.ApiCredential{Key: credential.Yobit.Key, Secret: credential.Yobit.Secret})
-	defer yobt.Release()
+	//yobt := yobit.New(yobit.ApiCredential{Key: credential.Yobit.Key, Secret: credential.Yobit.Secret})
+
 
 	yob2 := wr.NewYobit(credential.Yobit)
 	btrx := wr.NewBittrex(credential.Bittrex)
+
+	defer yob2.Release()
+	defer btrx.Release()
 
 	switch command {
 	case "init":
@@ -124,41 +124,40 @@ func main() {
 		}
 	case "markets":
 		{
-			channel := make(chan yobit.InfoResponse)
-			go yobt.Info(channel)
-			infoResponse := <-channel
-			printInfoRecords(infoResponse, *cmdInfoCurrency)
-			fmt.Printf("\nTotal markets %d\n", len(infoResponse.Pairs))
+			//channel := make(chan yobit.InfoResponse)
+			//go yobt.Info(channel)
+			//infoResponse := <-channel
+			//printInfoRecords(infoResponse, *cmdInfoCurrency)
+			//fmt.Printf("\nTotal markets %d\n", len(infoResponse.Pairs))
 		}
 	case "ticker":
 		{
-			channel := make(chan yobit.TickerInfoResponse)
-			go yobt.Tickers24([]string{strings.ToLower(*cmdTickerPair)}, channel)
-			tickerResponse := <-channel
-
-			for ticker, v := range tickerResponse.Tickers {
-				printTicker(v, ticker)
-			}
+			//channel := make(chan yobit.TickerInfoResponse)
+			//go yobt.Tickers24([]string{strings.ToLower(*cmdTickerPair)}, channel)
+			//tickerResponse := <-channel
+			//
+			//for ticker, v := range tickerResponse.Tickers {
+			//	printTicker(v, ticker)
+			//}
 		}
 	case "depth":
 		{
-			channel := make(chan yobit.DepthResponse)
-			go yobt.DepthLimited(strings.ToLower(*cmdDepthPair), *cmdDepthLimit, channel)
-			depthResponse := <-channel
-			offers := depthResponse.Offers[*cmdDepthPair]
-			printOffers(offers)
+			//channel := make(chan yobit.DepthResponse)
+			//go yobt.DepthLimited(strings.ToLower(*cmdDepthPair), *cmdDepthLimit, channel)
+			//depthResponse := <-channel
+			//offers := depthResponse.Offers[*cmdDepthPair]
+			//printOffers(offers)
 
 		}
 	case "trades":
 		{
-			channel := make(chan yobit.TradesResponse)
-			go yobt.TradesLimited(strings.ToLower(*cmdTradesPair), *cmdTradesLimit, channel)
-			tradesResponse := <-channel
-			for ticker, trades := range tradesResponse.Trades {
-				fmt.Println(Bold(strings.ToUpper(ticker)))
-				printTrades(trades)
-
-			}
+			//channel := make(chan yobit.TradesResponse)
+			//go yobt.TradesLimited(strings.ToLower(*cmdTradesPair), *cmdTradesLimit, channel)
+			//tradesResponse := <-channel
+			//for ticker, trades := range tradesResponse.Trades {
+			//	fmt.Println(Bold(strings.ToUpper(ticker)))
+			//	printTrades(trades)
+			//}
 		}
 	case "wallets":
 		{
@@ -170,64 +169,65 @@ func main() {
 
 			yobitBalances := <-channelYobit
 			bittrexBalances := <-channelBittrex
-			fmt.Println(bittrexBalances)
 
-			funds := yobitBalances.Funds
-			usdPairs := createMarketPairsForYobit(funds, *cmdWalletsBaseCurrency, yobt)
-			if len(usdPairs) == 0 {
-				fatal("No one market found for a coin", *cmdWalletsBaseCurrency)
-			}
+			//funds := yobitBalances.Funds
+			//usdPairs := createMarketPairsForYobit(funds, *cmdWalletsBaseCurrency, yobt)
+			//if len(usdPairs) == 0 {
+			//	fatal("No one market found for a coin", *cmdWalletsBaseCurrency)
+			//}
+			//
+			//// Requests Yobit's tickers
+			//tickersChan := make(chan yobit.TickerInfoResponse)
+			//go yobt.Tickers24(usdPairs, tickersChan)
+			//tickerRs := <-tickersChan
 
-			// Requests Yobit's tickers
-			tickersChan := make(chan yobit.TickerInfoResponse)
-			go yobt.Tickers24(usdPairs, tickersChan)
-			tickerRs := <-tickersChan
-
-			yobitBalances.Tickers = tickerMapFromYobit(tickerRs.Tickers)
-			printWallets(*cmdWalletsBaseCurrency, yobitBalances, time.Now().Unix())
+			//yobitBalances.Tickers = tickerMapFromYobit(tickerRs.Tickers)
+			allBalances := []wr.Balances{yobitBalances, bittrexBalances}
+			conversionCurrency := *cmdWalletsBaseCurrency
+			printWallets(conversionCurrency, allBalances, true)
 		}
 	case "active-orders":
 		{
-			channel := make(chan yobit.ActiveOrdersResponse)
-			go yobt.ActiveOrders(*cmdActiveOrderPair, channel)
-			activeOrders := <-channel
-			printActiveOrders(activeOrders)
+			//channel := make(chan yobit.ActiveOrdersResponse)
+			//go yobt.ActiveOrders(*cmdActiveOrderPair, channel)
+			//activeOrders := <-channel
+			//printActiveOrders(activeOrders)
 
 		}
 	case "order":
 		{
-			channel := make(chan yobit.OrderInfoResponse)
-			go yobt.OrderInfo(*cmdOrderInfoId, channel)
-			order := <-channel
-			printOrderInfo(order.Orders)
+			//channel := make(chan yobit.OrderInfoResponse)
+			//go yobt.OrderInfo(*cmdOrderInfoId, channel)
+			//order := <-channel
+			//printOrderInfo(order.Orders)
 		}
 	case "trade-history":
 		{
-			channel := make(chan yobit.TradeHistoryResponse)
-			go yobt.TradeHistory(*cmdTradeHistoryPair, channel)
-			history := <-channel
-			printTradeHistory(history)
+			//channel := make(chan yobit.TradeHistoryResponse)
+			//go yobt.TradeHistory(*cmdTradeHistoryPair, channel)
+			//history := <-channel
+			//printTradeHistory(history)
 		}
 	case "buy":
 		{
-			channel := make(chan yobit.TradeResponse)
-			go yobt.Trade(*cmdBuyPair, "buy", *cmdBuyRate, *cmdBuyAmount, channel)
-			trade := <-channel
-			printTradeResult(trade.Result)
+			//channel := make(chan yobit.TradeResponse)
+			//go yobt.Trade(*cmdBuyPair, "buy", *cmdBuyRate, *cmdBuyAmount, channel)
+			//trade := <-channel
+			//printTradeResult(trade.Result)
 		}
 	case "sell":
 		{
-			channel := make(chan yobit.TradeResponse)
-			go yobt.Trade(*cmdSellPair, "sell", *cmdSellRate, *cmdSellAmount, channel)
-			trade := <-channel
-			printTradeResult(trade.Result)
+			//channel := make(chan yobit.TradeResponse)
+			//go yobt.Trade(*cmdSellPair, "sell", *cmdSellRate, *cmdSellAmount, channel)
+			//trade := <-channel
+			//printTradeResult(trade.Result)
 		}
 	case "cancel":
 		{
-			channel := make(chan yobit.CancelOrderResponse)
-			go yobt.CancelOrder(*cmdCancelOrderOrderId, channel)
-			cancelResult := <-channel
-			fmt.Printf("Order %d candeled\n", cancelResult.Result.OrderId)
+			//channel := make(chan yobit.CancelOrderResponse)
+			//go yobt.CancelOrder(*cmdCancelOrderOrderId, channel)
+			//cancelResult := <-channel
+			//fmt.Printf("Order %d candeled\n", cancelResult.Result.OrderId)
 		}
 	default:
 		fatal("Unknown command " + command)

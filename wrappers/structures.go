@@ -33,6 +33,7 @@ type Balances struct {
 
 type Exchange struct {
 	Name string
+	SName string
 	Link string
 }
 

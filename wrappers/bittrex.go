@@ -81,6 +81,10 @@ func (bw *BittrexWrapper) GetBalances( ch chan<- Balances) {
 	ch <- canonicalBalances
 }
 
+func (bw *BittrexWrapper) Release()  {
+	// nothing to do now
+}
+
 func fatal(v ...interface{}) {
 	fmt.Printf("%s\n", fmt.Sprint(v))
 	os.Exit(1)

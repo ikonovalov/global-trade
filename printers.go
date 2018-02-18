@@ -80,142 +80,53 @@ func printInfoRecords(infoResponse yobit.InfoResponse, currencyFilter string) {
 	table.Render()
 }
 
-func printWallets(groundCurrency string, balances w.Balances, updated int64) {
-	// ground means supporting or recalculating currency. For example: "recalculate to an usd or a btc"
-	// setup table
+func printWallets(conversionCurrency string, balances []w.Balances, hideZeros bool) {
+
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{
 		"#",
+		"exchange",
 		"coin",
 		"hold",
 		"on order",
-		fmt.Sprintf("%s RATE (24AVG)", groundCurrency),
-		fmt.Sprintf("%s RATE (LAST)", groundCurrency),
-		fmt.Sprintf("%s HOLD (24AVG)", groundCurrency),
-		fmt.Sprintf("%s HOLD (LAST)", groundCurrency),
-		"diff (abs)",
-		"diff (%)",
-		"coin",
 	})
-	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold)
-	table.SetColumnColor(bold, bold, norm, norm, norm, norm, norm, norm, norm, norm, bold)
-
-	// determinate price multiplication indicator
-	const one = float64(1)
-	baseGroundPriceFunc := func(tickerName string) float64 {
-		if tickerName == fmt.Sprintf("%s_%[1]s", groundCurrency) {
-			return one
-		} else {
-			return balances.Tickers[tickerName].Avg
-		}
-	}
-	actualGroundPriceFunc := func(tickerName string) float64 {
-		if tickerName == fmt.Sprintf("%s_%[1]s", groundCurrency) {
-			return one
-		} else {
-			return balances.Tickers[tickerName].Last
-		}
-	}
-	onOrdersVisualFunction := func(ordered float64, volume float64) string {
-		if ordered == 0 {
-			return ""
-		}
-		if ordered-volume == 0 {
-			return Red(fmt.Sprintf("%8.8f", ordered)).String()
-		} else {
-			return fmt.Sprintf("%8.8f", ordered)
-		}
-	}
-
-	// define global accumulators
-	var (
-		baseGroundTotal   float64
-		actualGroundTotal float64
-		diffGroundTotal   float64 // diff between base and actual totals
-	)
-
-	// order coins by name
-	coins := make([]string, 0, len(balances.Funds))
-	for c := range balances.Funds {
-		coins = append(coins, c)
-	}
-	sort.Strings(coins)
+	table.SetHeaderColor(bold, bold, bold, bold, bold, )
+	table.SetColumnColor(bold, bold, norm, norm, norm, )
+	table.SetAutoMergeCells(true)
 
 	var (
-		winners = make([]string, 0, len(coins))
-		losers  = make([]string, 0, len(coins))
+		rowCounter = 0
 	)
 
-	rowCounter := 0
+	for _, balance := range balances {
 
-	for _, coin := range coins {
-		volume := balances.Funds[coin]
-		onOrders := volume - balances.AvailableFunds[coin]
-		if volume == 0 {
-			continue
+		// order coins by name
+		coins := make([]string, 0, len(balance.Funds))
+		for c := range balance.Funds {
+			coins = append(coins, c)
 		}
-		rowCounter++
-		tickerName := fmt.Sprintf("%s_%s", coin, groundCurrency)
+		sort.Strings(coins)
 
-		baseGroundPrice := baseGroundPriceFunc(tickerName)
-		baseGroundCoinPrice := volume * baseGroundPrice
-		baseGroundTotal += baseGroundCoinPrice
+		for _, coin := range coins {
+			volume := balance.Funds[coin]
+			onOrders := volume - balance.AvailableFunds[coin]
+			if hideZeros && volume == 0 {
+				continue
+			}
+			rowCounter++
 
-		actualGroundPrice := actualGroundPriceFunc(tickerName)
-		actualGroundCoinPrice := volume * actualGroundPrice
-		actualGroundTotal += actualGroundCoinPrice
+			coinUpperCase := strings.ToUpper(coin)
+			exchangeName := strings.ToUpper(balance.Exchange.Name)
 
-		diffGroundCoinPriceAbs := actualGroundCoinPrice - baseGroundCoinPrice
-		diffGroundTotal += diffGroundCoinPriceAbs
-
-		var diffGroundCoinPricePercent float64
-		if diffGroundCoinPriceAbs != 0 {
-			diffGroundCoinPricePercent = (actualGroundPrice - baseGroundPrice) / baseGroundPrice * float64(100)
+			table.Append([]string{
+				fmt.Sprintf("%d", rowCounter),
+				exchangeName,
+				coinUpperCase,
+				sprintf64(volume),
+				sprintf64(onOrders),
+			})
 		}
-
-		var profitColor func(arg interface{}) Value
-		if baseGroundPrice > actualGroundPrice {
-			profitColor = Red
-			losers = append(losers, coin)
-		} else if baseGroundPrice == actualGroundPrice {
-			profitColor = Gray
-		} else {
-			winners = append(winners, coin)
-			profitColor = Green
-		}
-
-		coinUpperCase := strings.ToUpper(coin)
-		table.Append([]string{
-			fmt.Sprintf("%d", rowCounter),
-			coinUpperCase,
-			fmt.Sprintf("%.8f", volume),
-			fmt.Sprintf("%s", onOrdersVisualFunction(onOrders, volume)),
-			fmt.Sprintf("%.8f", baseGroundPrice),
-			fmt.Sprintf("%.8f", profitColor(actualGroundPrice)),
-			fmt.Sprintf("%.8f", baseGroundCoinPrice),
-			fmt.Sprintf("%.8f", profitColor(actualGroundCoinPrice)),
-			fmt.Sprintf("%+8.8f", profitColor(diffGroundCoinPriceAbs)),
-			fmt.Sprintf("%+3.2f", profitColor(diffGroundCoinPricePercent)),
-			coinUpperCase,
-		})
 	}
-
-	table.SetFooter([]string{
-		"",
-		"",
-		"",
-		"",
-		time.Unix(updated, 0).Format(time.Stamp),
-		"Total cap",
-		fmt.Sprintf("%8.2f", baseGroundTotal),
-		fmt.Sprintf("%8.2f", actualGroundTotal),
-		fmt.Sprintf("%+8.2f", diffGroundTotal),
-		"",
-		"",
-	})
-
-	fmt.Printf("%s Winners: %-3s %v\n", BgGreen(" "), fmt.Sprintf("%d", len(winners)), winners)
-	fmt.Printf("%s Losers : %-3s %v\n", BgRed(" "), fmt.Sprintf("%d", len(losers)), losers)
 
 	table.Render()
 }

@@ -45,6 +45,10 @@ func NewYobit(credential YobitApiCredential) *YobitWrapper {
 	return &YobitWrapper{yobit:yobt}
 }
 
+func (yw *YobitWrapper) Direct() *yobit.Yobit  {
+	return yw.yobit
+}
+
 func (yw *YobitWrapper) Release() {
 	yw.yobit.Release()
 }

@@ -91,14 +91,27 @@ func printWallets(conversionCurrency string, balances []w.Balances, hideZeros bo
 		"on order",
 	})
 	table.SetHeaderColor(bold, bold, bold, bold, bold, )
-	table.SetColumnColor(bold, bold, norm, norm, norm, )
-	table.SetAutoMergeCells(true)
+	table.SetColumnColor(bold, bold, bold, norm, norm, )
 
 	var (
-		rowCounter = 0
+		rowCounter              = 0
+		shouldPrintExchangeName = true
+		onFatOrdersHighlights   = func(ordered float64, volume float64) string {
+			if ordered == 0 {
+				return ""
+			}
+			if ordered-volume == 0 {
+				return Red(fmt.Sprintf("%8.8f", ordered)).String()
+			} else {
+				return fmt.Sprintf("%8.8f", ordered)
+			}
+		}
 	)
 
+
+
 	for _, balance := range balances {
+		shouldPrintExchangeName = true
 
 		// order coins by name
 		coins := make([]string, 0, len(balance.Funds))
@@ -117,14 +130,18 @@ func printWallets(conversionCurrency string, balances []w.Balances, hideZeros bo
 
 			coinUpperCase := strings.ToUpper(coin)
 			exchangeName := strings.ToUpper(balance.Exchange.Name)
+			if !shouldPrintExchangeName {
+				exchangeName = ""
+			}
 
 			table.Append([]string{
 				fmt.Sprintf("%d", rowCounter),
 				exchangeName,
 				coinUpperCase,
 				sprintf64(volume),
-				sprintf64(onOrders),
+				onFatOrdersHighlights(onOrders, volume),
 			})
+			shouldPrintExchangeName = false
 		}
 	}
 

@@ -36,6 +36,7 @@ import (
 	"sort"
 	"github.com/ikonovalov/go-yobit"
 	w "github.com/ikonovalov/global-trade/wrappers"
+	"github.com/miguelmota/go-coinmarketcap"
 )
 
 var (
@@ -80,7 +81,7 @@ func printInfoRecords(infoResponse yobit.InfoResponse, currencyFilter string) {
 	table.Render()
 }
 
-func printWallets(conversionCurrency string, balances []w.Balance, hideZeros bool) {
+func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balance, hideZeros bool) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{
 		"#",
@@ -88,9 +89,14 @@ func printWallets(conversionCurrency string, balances []w.Balance, hideZeros boo
 		"coin",
 		"hold",
 		"on order",
+		"price usd (cmc)",
+		"price btc (cmc)",
+		"p1h",
+		"p24h",
+		"p7d",
 	})
-	table.SetHeaderColor(bold, bold, bold, bold, bold, )
-	table.SetColumnColor(bold, bold, bold, norm, norm, )
+	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, )
+	table.SetColumnColor(bold, bold, bold, norm, norm, norm, norm, norm, norm, norm, )
 
 	var (
 		rowCounter              = 0
@@ -104,6 +110,23 @@ func printWallets(conversionCurrency string, balances []w.Balance, hideZeros boo
 			} else {
 				return fmt.Sprintf("%8.8f", ordered)
 			}
+		}
+		brownOnZero = func (value float64) string {
+			if value != 0 {
+				return sprintf64(value)
+			} else {
+				return Brown(sprintf64(value)).String()
+			}
+		}
+		coloredPercentage = func(value float64) string {
+			color := Gray
+			if value > 0 {
+				color = Green
+			}
+			if value < 0 {
+				color = Red
+			}
+			return color(fmt.Sprintf("%+3.2f", value)).String()
 		}
 	)
 
@@ -131,18 +154,27 @@ func printWallets(conversionCurrency string, balances []w.Balance, hideZeros boo
 				exchangeName = ""
 			}
 
+			coinData := coinsMarket[coinUpperCase]
 			table.Append([]string{
 				fmt.Sprintf("%d", rowCounter),
 				exchangeName,
 				coinUpperCase,
 				sprintf64(volume),
 				onFatOrdersHighlights(onOrders, volume),
+				brownOnZero(coinData.PriceUsd),
+				brownOnZero(coinData.PriceBtc),
+				coloredPercentage(coinData.PercentChange1h),
+				coloredPercentage(coinData.PercentChange24h),
+				coloredPercentage(coinData.PercentChange7d),
 			})
 			shouldPrintExchangeName = false
 		}
 	}
 
 	table.Render()
+
+	fmt.Print("\nLegend\n")
+	fmt.Printf("%s - Is it a shit coin?\n", BgBrown(" "))
 }
 
 func printOffers(offers yobit.Offers) {

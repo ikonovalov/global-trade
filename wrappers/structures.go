@@ -40,10 +40,16 @@ type ByExchangeName struct{ Balances }
 func (s ByExchangeName) Less(i, j int) bool { return s.Balances[i].Exchange.Name < s.Balances[j].Exchange.Name }
 
 type Exchange struct {
+	CryptCurrencyExchange
 	Name    string
 	SName   string
 	Link    string
-	Tickers map[string]Ticker
+}
+
+type CryptCurrencyExchange interface {
+	GetTickers([]string, chan <- map[string]Ticker)
+	GetBalances(ch chan<- Balance)
+	Release()
 }
 
 type Ticker struct {

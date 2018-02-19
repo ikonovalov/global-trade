@@ -92,7 +92,27 @@ func (bw *BittrexWrapper) GetBalances( ch chan<- Balance) {
 }
 
 func (bw *BittrexWrapper) GetTickers(paris []string, ch chan <- map[string]Ticker) {
-
+	marketSummaries, err := bw.bittrex.GetMarketSummaries()
+	if err != nil {
+		fatal(err)
+	}
+	rs := make(map[string]Ticker)
+	for _, m := range marketSummaries {
+		hi, _ := m.High.Float64()
+		lo, _ := m.Low.Float64()
+		la, _ := m.Last.Float64()
+		as, _ := m.Ask.Float64()
+		bi, _ := m.Bid.Float64()
+		vo, _ := m.Volume.Float64()
+		rs[m.MarketName] = Ticker{
+			High: hi,
+			Low:  lo,
+			Last: la,
+			Sell: as,
+			Buy: bi,
+			Vol: vo,
+		}
+	}
 }
 
 func (bw *BittrexWrapper) Release()  {

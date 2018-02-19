@@ -24,17 +24,26 @@
 
 package wrappers
 
-type Balances struct {
+type Balance struct {
 	Exchange       Exchange
 	Funds          map[string]float64
 	AvailableFunds map[string]float64
-	Tickers        map[string]Ticker
 }
 
+type Balances []Balance
+
+func (s Balances) Len() int      { return len(s) }
+func (s Balances) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
+type ByExchangeName struct{ Balances }
+
+func (s ByExchangeName) Less(i, j int) bool { return s.Balances[i].Exchange.Name < s.Balances[j].Exchange.Name }
+
 type Exchange struct {
-	Name string
-	SName string
-	Link string
+	Name    string
+	SName   string
+	Link    string
+	Tickers map[string]Ticker
 }
 
 type Ticker struct {

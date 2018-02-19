@@ -80,8 +80,7 @@ func printInfoRecords(infoResponse yobit.InfoResponse, currencyFilter string) {
 	table.Render()
 }
 
-func printWallets(conversionCurrency string, balances []w.Balances, hideZeros bool) {
-
+func printWallets(conversionCurrency string, balances []w.Balance, hideZeros bool) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{
 		"#",
@@ -107,8 +106,6 @@ func printWallets(conversionCurrency string, balances []w.Balances, hideZeros bo
 			}
 		}
 	)
-
-
 
 	for _, balance := range balances {
 		shouldPrintExchangeName = true

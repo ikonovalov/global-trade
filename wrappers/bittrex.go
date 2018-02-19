@@ -36,6 +36,7 @@ import (
 
 type BittrexWrapper struct {
 	bittrex *bittrex.Bittrex
+	availableMarkets map[string]bittrex.Market
 }
 
 type BittrexApiCredential struct {
@@ -49,16 +50,26 @@ func NewBittrex(credential BittrexApiCredential) *BittrexWrapper {
 		fatal(err)
 	}
 	httpClient := &http.Client{Transport: cloudflare, Jar: cloudflare.Cookies, Timeout: time.Second * 60}
+	bittrexClient := bittrex.NewWithCustomHttpClient(credential.Key, credential.Secret, httpClient)
+
 	ba := BittrexWrapper{
-		bittrex: bittrex.NewWithCustomHttpClient(
-			credential.Key, credential.Secret,
-			httpClient,
-		),
+		bittrex: bittrexClient,
+		availableMarkets: make(map[string]bittrex.Market),
 	}
+
+	// upload markets
+	start := time.Now()
+	markets, err := bittrexClient.GetMarkets()
+	elapsed := time.Since(start)
+	log.Printf("Bittrex.GetMarkets took %s", elapsed)
+	for _, m := range markets {
+		ba.availableMarkets[m.MarketName] = m
+	}
+
 	return &ba
 }
 
-func (bw *BittrexWrapper) GetBalances( ch chan<- Balances) {
+func (bw *BittrexWrapper) GetBalances( ch chan<- Balance) {
 	start := time.Now()
 	balances, err := bw.bittrex.GetBalances()
 	elapsed := time.Since(start)
@@ -66,11 +77,10 @@ func (bw *BittrexWrapper) GetBalances( ch chan<- Balances) {
 	if err != nil {
 		fatal(err)
 	}
-	canonicalBalances := Balances {
+	canonicalBalances := Balance{
 		Exchange:       Exchange{Name: "Bittrex", Link: "https://bittrex.com"},
 		Funds:          make(map[string]float64),
 		AvailableFunds: make(map[string]float64),
-		Tickers:        make(map[string]Ticker),
 	}
 	for _, bb := range balances {
 		balF64, _ := bb.Balance.Float64()
@@ -79,6 +89,10 @@ func (bw *BittrexWrapper) GetBalances( ch chan<- Balances) {
 		canonicalBalances.AvailableFunds[bb.Currency] = avaF64
 	}
 	ch <- canonicalBalances
+}
+
+func (bw *BittrexWrapper) GetTickers(paris []string, ch chan <- map[string]Ticker) {
+
 }
 
 func (bw *BittrexWrapper) Release()  {

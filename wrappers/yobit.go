@@ -53,24 +53,28 @@ func (yw *YobitWrapper) Release() {
 	yw.yobit.Release()
 }
 
-func (yw *YobitWrapper) GetBalances(ch chan<- Balances) {
+func (yw *YobitWrapper) GetBalances(ch chan<- Balance) {
 	channelYobit := make(chan yobit.GetInfoResponse)
 	go yw.yobit.GetInfo(channelYobit)
 	yobitGetInfoRes := <-channelYobit
 	data := yobitGetInfoRes.Data
 
-	yobitBalances := Balances{
+	yobitBalances := Balance{
 		Exchange:       Exchange{Name: "Yobit", Link: yobit.Url},
 		Funds:          data.FundsIncludeOrders,
 		AvailableFunds: data.Funds,
-		Tickers:        make(map[string]Ticker),
 	}
 	ch <- yobitBalances
 }
 
-func tickerMapFromYobit(ytm map[string]yobit.Ticker) map[string]Ticker {
+func (yw *YobitWrapper) GetTickers(pairs []string, ch chan <- map[string]Ticker) {
+	tickersChan := make(chan yobit.TickerInfoResponse)
+	go yw.yobit.Tickers24(pairs, tickersChan)
+	tickerRs := <-tickersChan
+
+	// convert
 	rs := make(map[string]Ticker)
-	for k,yt := range ytm {
+	for k,yt := range tickerRs.Tickers {
 		rs[k] = Ticker {
 			High: yt.High,
 			Low: yt.Low,
@@ -83,5 +87,6 @@ func tickerMapFromYobit(ytm map[string]yobit.Ticker) map[string]Ticker {
 			Updated: yt.Updated,
 		}
 	}
-	return rs
+	ch <- rs
+
 }

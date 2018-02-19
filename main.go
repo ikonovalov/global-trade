@@ -34,6 +34,7 @@ import (
 	wr "github.com/ikonovalov/global-trade/wrappers"
 	. "github.com/logrusorgru/aurora"
 	"strings"
+	"sort"
 )
 
 const (
@@ -162,28 +163,25 @@ func main() {
 		}
 	case "wallets":
 		{
-			channelYobit := make(chan wr.Balances)
-			channelBittrex := make(chan wr.Balances)
+			balancesChannel := make(chan wr.Balance, 2)
 
-			go yob2.GetBalances(channelYobit)
-			go btrx.GetBalances(channelBittrex)
+			go yob2.GetBalances(balancesChannel)
+			go btrx.GetBalances(balancesChannel)
 
-			yobitBalances := <-channelYobit
-			bittrexBalances := <-channelBittrex
 
 			//funds := yobitBalances.Funds
-			//usdPairs := createMarketPairsForYobit(funds, *cmdWalletsBaseCurrency, yobt)
+			//usdPairs := createMarketPairsForYobit(funds, *cmdWalletsBaseCurrency, yob2.Direct())
 			//if len(usdPairs) == 0 {
 			//	fatal("No one market found for a coin", *cmdWalletsBaseCurrency)
 			//}
 			//
-			//// Requests Yobit's tickers
-			//tickersChan := make(chan yobit.TickerInfoResponse)
-			//go yobt.Tickers24(usdPairs, tickersChan)
-			//tickerRs := <-tickersChan
+			//tickerChan := make(chan map[string]wr.Ticker)
+			//go yob2.GetTickers(usdPairs, tickerChan)
+			//yobitBalances.Tickers = <- tickerChan
 
-			//yobitBalances.Tickers = tickerMapFromYobit(tickerRs.Tickers)
-			allBalances := []wr.Balances{yobitBalances, bittrexBalances}
+			allBalances := []wr.Balance{<-balancesChannel, <-balancesChannel}
+			sort.Sort(wr.ByExchangeName{allBalances})
+
 			conversionCurrency := *cmdWalletsBaseCurrency
 			printWallets(conversionCurrency, allBalances, true)
 		}
@@ -235,6 +233,8 @@ func main() {
 	}
 
 }
+
+
 func createMarketPairsForYobit(funds map[string]float64, baseCurrency string, yobt *yobit.Yobit) []string {
 	usdPairs := make([]string, 0, len(funds))
 	for coin, volume := range funds {

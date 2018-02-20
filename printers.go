@@ -183,7 +183,7 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 		}
 	}
 	table.SetFooter([]string{
-		time.Now().Format(time.Stamp), "", "", "", "", "", "" , "", "",
+		"", time.Now().Format(time.Stamp), "", "", "", "", "" , "", "",
 		"Total cap", sprintf64(totalUsdVolume), sprintf64(totalBtcVolume),
 	})
 

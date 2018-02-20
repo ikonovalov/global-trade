@@ -37,6 +37,7 @@ type GlobalCredentials struct {
 	Encryption bool                          `json:"encryption"`
 	Yobit      wrappers.YobitApiCredential   `json:"yobit,omitempty"`
 	Bittrex    wrappers.BittrexApiCredential `json:"bittrex,omitempty"`
+	Etherscan  wrappers.EtherScanCredential  `json:"etherscan,omitempty"`
 }
 
 func loadApiCredential() (GlobalCredentials, error) {

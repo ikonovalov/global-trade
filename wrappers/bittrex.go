@@ -49,7 +49,7 @@ func NewBittrex(credential BittrexApiCredential) *BittrexWrapper {
 	if err != nil {
 		fatal(err)
 	}
-	httpClient := &http.Client{Transport: cloudflare, Jar: cloudflare.Cookies, Timeout: time.Second * 60}
+	httpClient := &http.Client{Transport: cloudflare, Jar: cloudflare.Cookies, Timeout: time.Second * 10}
 	bittrexClient := bittrex.NewWithCustomHttpClient(credential.Key, credential.Secret, httpClient)
 
 	ba := BittrexWrapper{

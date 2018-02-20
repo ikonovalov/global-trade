@@ -44,7 +44,6 @@ const (
 
 var (
 	defaultPair     = "btc_usd"
-	defaultCurrency = "usd"
 
 	app            = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.4.0")
 	appVerboseFlag = app.Flag("verbose", "Print additional information").Bool()
@@ -67,8 +66,7 @@ var (
 	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default(defaultPair).String()
 	cmdTradesLimit = cmdTrades.Arg("limit", "Trades output limit.").Default("100").Int()
 
-	cmdWallets             = app.Command("wallets", "(w) Command returns information about user's balances and privileges of API-key as well as server time.").Alias("w")
-	cmdWalletsBaseCurrency = cmdWallets.Arg("base-currency", "Base recalculated currency. Default: usd.").Default(defaultCurrency).String()
+	cmdWallets = app.Command("wallets", "(w) Command returns information about user's balances and privileges of API-key as well as server time.").Alias("w")
 
 	cmdActiveOrders    = app.Command("active-orders", "(ao) Show active orders").Alias("ao")
 	cmdActiveOrderPair = cmdActiveOrders.Arg("pair", "doge_usd...").Required().String()
@@ -170,6 +168,10 @@ func main() {
 		{
 			balancesChannel := make(chan wr.Balance, 2)
 			cmcMarketChannel := make(chan map[string]coinmarketcap.Coin)
+			etherScanChannel := make(chan wr.EthereumBalances)
+
+			// get EtherScan accounting data
+			go wr.GetEthereumBalances(credential.Etherscan.Accounts, etherScanChannel)
 
 			// get CoinMarketCup market data
 			go cmc.GetMarketData(cmcMarketChannel)
@@ -179,10 +181,10 @@ func main() {
 				go exc.GetBalances(balancesChannel)
 			}
 
-			allBalances := []wr.Balance{<-balancesChannel, <-balancesChannel}
+			allBalances := []wr.Balance{<-balancesChannel, <-balancesChannel, (<-etherScanChannel).SummaryBalance()}
 			sort.Sort(wr.ByExchangeName{allBalances})
 
-			printWallets(<- cmcMarketChannel, allBalances, true)
+			printWallets(<-cmcMarketChannel, allBalances, true)
 		}
 	case "active-orders":
 		{
@@ -231,15 +233,4 @@ func main() {
 		fatal("Unknown command " + command)
 	}
 
-}
-
-func createMarketPairsForYobit(funds map[string]float64, baseCurrency string, yobt *yobit.Yobit) []string {
-	usdPairs := make([]string, 0, len(funds))
-	for coin, volume := range funds {
-		pair := fmt.Sprintf("%s_%s", coin, baseCurrency)
-		if volume > 0 && yobt.IsMarketExists(pair) {
-			usdPairs = append(usdPairs, pair)
-		}
-	}
-	return usdPairs
 }

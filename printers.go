@@ -94,13 +94,17 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 		"p1h",
 		"p24h",
 		"p7d",
+		"volume usd",
+		"volume btc",
 	})
-	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, )
-	table.SetColumnColor(bold, bold, bold, norm, norm, norm, norm, norm, norm, norm, )
+	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, )
+	table.SetColumnColor(bold, bold, bold, norm, norm, norm, norm, norm, norm, norm, norm, norm, )
 
 	var (
 		rowCounter              = 0
 		shouldPrintExchangeName = true
+		totalUsdVolume = 0.0
+		totalBtcVolume = 0.0
 		onFatOrdersHighlights   = func(ordered float64, volume float64) string {
 			if ordered == 0 {
 				return ""
@@ -155,6 +159,12 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 			}
 
 			coinData := coinsMarket[coinUpperCase]
+
+			volumeUsd := volume * coinData.PriceUsd
+			volumeBtc := volume * coinData.PriceBtc
+			totalUsdVolume += volumeUsd
+			totalBtcVolume += volumeBtc
+
 			table.Append([]string{
 				fmt.Sprintf("%d", rowCounter),
 				exchangeName,
@@ -166,15 +176,21 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 				coloredPercentage(coinData.PercentChange1h),
 				coloredPercentage(coinData.PercentChange24h),
 				coloredPercentage(coinData.PercentChange7d),
+				sprintf64(volumeUsd),
+				sprintf64(volumeBtc),
 			})
 			shouldPrintExchangeName = false
 		}
 	}
+	table.SetFooter([]string{
+		time.Now().Format(time.Stamp), "", "", "", "", "", "" , "", "",
+		"Total cap", sprintf64(totalUsdVolume), sprintf64(totalBtcVolume),
+	})
 
 	table.Render()
 
 	fmt.Print("\nLegend\n")
-	fmt.Printf("%s - Is it a shit coin?\n", BgBrown(" "))
+	fmt.Printf("%s - Is it a shitcoin?\n", BgBrown(" "))
 }
 
 func printOffers(offers yobit.Offers) {

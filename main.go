@@ -26,14 +26,16 @@ package main
 
 import (
 	"fmt"
-	. "github.com/logrusorgru/aurora"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"io/ioutil"
 	"log"
 	"os"
-	"strings"
 	"github.com/ikonovalov/go-yobit"
-	"encoding/json"
+	wr "github.com/ikonovalov/global-trade/wrappers"
+	. "github.com/logrusorgru/aurora"
+	"strings"
+	"sort"
+	"github.com/miguelmota/go-coinmarketcap"
 )
 
 const (
@@ -42,7 +44,6 @@ const (
 
 var (
 	defaultPair     = "btc_usd"
-	defaultCurrency = "usd"
 
 	app            = kingpin.New("yobit", "Yobit cryptocurrency exchange crafted client.").Version("0.4.0")
 	appVerboseFlag = app.Flag("verbose", "Print additional information").Bool()
@@ -65,8 +66,7 @@ var (
 	cmdTradesPair  = cmdTrades.Arg("pairs", "waves_btc, dash_usd and so on.").Default(defaultPair).String()
 	cmdTradesLimit = cmdTrades.Arg("limit", "Trades output limit.").Default("100").Int()
 
-	cmdWallets             = app.Command("wallets", "(w) Command returns information about user's balances and privileges of API-key as well as server time.").Alias("w")
-	cmdWalletsBaseCurrency = cmdWallets.Arg("base-currency", "Base recalculated currency. Default: usd.").Default(defaultCurrency).String()
+	cmdWallets = app.Command("wallets", "(w) Command returns information about user's balances and privileges of API-key as well as server time.").Alias("w")
 
 	cmdActiveOrders    = app.Command("active-orders", "(ao) Show active orders").Alias("ao")
 	cmdActiveOrderPair = cmdActiveOrders.Arg("pair", "doge_usd...").Required().String()
@@ -104,11 +104,21 @@ func main() {
 	credential, err := loadApiCredential()
 	if err != nil {
 		log.Println("Credential not set. You can't use trading API.")
-		credential = yobit.ApiCredential{}
+		credential = GlobalCredentials{}
 	}
 
-	yo := yobit.New(credential)
-	defer yo.Release()
+	// create exchanges client/wrappers
+
+	cmc := wr.CoinMarketCap{}
+
+	newYobit := wr.NewYobit(credential.Yobit)
+	yob2 := wr.Exchange{CryptCurrencyExchange: newYobit}
+	btrx := wr.Exchange{CryptCurrencyExchange: wr.NewBittrex(credential.Bittrex)}
+
+	defer yob2.Release()
+	defer btrx.Release()
+
+	yobt := newYobit.Direct()
 
 	switch command {
 	case "init":
@@ -120,7 +130,7 @@ func main() {
 	case "markets":
 		{
 			channel := make(chan yobit.InfoResponse)
-			go yo.Info(channel)
+			go yobt.Info(channel)
 			infoResponse := <-channel
 			printInfoRecords(infoResponse, *cmdInfoCurrency)
 			fmt.Printf("\nTotal markets %d\n", len(infoResponse.Pairs))
@@ -128,7 +138,7 @@ func main() {
 	case "ticker":
 		{
 			channel := make(chan yobit.TickerInfoResponse)
-			go yo.Tickers24([]string{strings.ToLower(*cmdTickerPair)}, channel)
+			go yobt.Tickers24([]string{strings.ToLower(*cmdTickerPair)}, channel)
 			tickerResponse := <-channel
 
 			for ticker, v := range tickerResponse.Tickers {
@@ -138,7 +148,7 @@ func main() {
 	case "depth":
 		{
 			channel := make(chan yobit.DepthResponse)
-			go yo.DepthLimited(strings.ToLower(*cmdDepthPair), *cmdDepthLimit, channel)
+			go yobt.DepthLimited(strings.ToLower(*cmdDepthPair), *cmdDepthLimit, channel)
 			depthResponse := <-channel
 			offers := depthResponse.Offers[*cmdDepthPair]
 			printOffers(offers)
@@ -147,46 +157,39 @@ func main() {
 	case "trades":
 		{
 			channel := make(chan yobit.TradesResponse)
-			go yo.TradesLimited(strings.ToLower(*cmdTradesPair), *cmdTradesLimit, channel)
+			go yobt.TradesLimited(strings.ToLower(*cmdTradesPair), *cmdTradesLimit, channel)
 			tradesResponse := <-channel
 			for ticker, trades := range tradesResponse.Trades {
 				fmt.Println(Bold(strings.ToUpper(ticker)))
 				printTrades(trades)
-
 			}
 		}
 	case "wallets":
 		{
-			channel := make(chan yobit.GetInfoResponse)
-			go yo.GetInfo(channel)
-			getInfoRes := <-channel
-			data := getInfoRes.Data
-			funds := data.FundsIncludeOrders
-			usdPairs := make([]string, 0, len(funds))
-			for coin, volume := range funds {
-				pair := fmt.Sprintf("%s_%s", coin, *cmdWalletsBaseCurrency)
-				if volume > 0 && yo.IsMarketExists(pair) {
-					usdPairs = append(usdPairs, pair)
-				}
-			}
-			if len(usdPairs) == 0 {
-				fatal("No one market found for a coin", *cmdWalletsBaseCurrency)
-			}
-			tickersChan := make(chan yobit.TickerInfoResponse)
+			balancesChannel := make(chan wr.Balance, 2)
+			cmcMarketChannel := make(chan map[string]coinmarketcap.Coin)
+			etherScanChannel := make(chan wr.EthereumBalances)
 
-			go yo.Tickers24(usdPairs, tickersChan)
-			tickerRs := <-tickersChan
-			fundsAndTickers := struct {
-				funds     map[string]float64
-				freeFunds map[string]float64
-				tickers   map[string]yobit.Ticker
-			}{funds: data.FundsIncludeOrders, freeFunds: data.Funds, tickers: tickerRs.Tickers}
-			printWallets(*cmdWalletsBaseCurrency, fundsAndTickers, data.ServerTime)
+			// get EtherScan accounting data
+			go wr.GetEthereumBalances(credential.Etherscan.Accounts, etherScanChannel)
+
+			// get CoinMarketCup market data
+			go cmc.GetMarketData(cmcMarketChannel)
+
+			// launch GetBalances
+			for _, exc := range []wr.Exchange{yob2, btrx} {
+				go exc.GetBalances(balancesChannel)
+			}
+
+			allBalances := []wr.Balance{<-balancesChannel, <-balancesChannel, (<-etherScanChannel).SummaryBalance()}
+			sort.Sort(wr.ByExchangeName{allBalances})
+
+			printWallets(<-cmcMarketChannel, allBalances, true)
 		}
 	case "active-orders":
 		{
 			channel := make(chan yobit.ActiveOrdersResponse)
-			go yo.ActiveOrders(*cmdActiveOrderPair, channel)
+			go yobt.ActiveOrders(*cmdActiveOrderPair, channel)
 			activeOrders := <-channel
 			printActiveOrders(activeOrders)
 
@@ -194,64 +197,40 @@ func main() {
 	case "order":
 		{
 			channel := make(chan yobit.OrderInfoResponse)
-			go yo.OrderInfo(*cmdOrderInfoId, channel)
+			go yobt.OrderInfo(*cmdOrderInfoId, channel)
 			order := <-channel
 			printOrderInfo(order.Orders)
 		}
 	case "trade-history":
 		{
 			channel := make(chan yobit.TradeHistoryResponse)
-			go yo.TradeHistory(*cmdTradeHistoryPair, channel)
+			go yobt.TradeHistory(*cmdTradeHistoryPair, channel)
 			history := <-channel
 			printTradeHistory(history)
 		}
 	case "buy":
 		{
 			channel := make(chan yobit.TradeResponse)
-			go yo.Trade(*cmdBuyPair, "buy", *cmdBuyRate, *cmdBuyAmount, channel)
+			go yobt.Trade(*cmdBuyPair, "buy", *cmdBuyRate, *cmdBuyAmount, channel)
 			trade := <-channel
 			printTradeResult(trade.Result)
 		}
 	case "sell":
 		{
 			channel := make(chan yobit.TradeResponse)
-			go yo.Trade(*cmdSellPair, "sell", *cmdSellRate, *cmdSellAmount, channel)
+			go yobt.Trade(*cmdSellPair, "sell", *cmdSellRate, *cmdSellAmount, channel)
 			trade := <-channel
 			printTradeResult(trade.Result)
 		}
 	case "cancel":
 		{
 			channel := make(chan yobit.CancelOrderResponse)
-			go yo.CancelOrder(*cmdCancelOrderOrderId, channel)
+			go yobt.CancelOrder(*cmdCancelOrderOrderId, channel)
 			cancelResult := <-channel
 			fmt.Printf("Order %d candeled\n", cancelResult.Result.OrderId)
 		}
 	default:
 		fatal("Unknown command " + command)
-	}
-
-}
-
-func loadApiCredential() (yobit.ApiCredential, error) {
-	file, e := ioutil.ReadFile(credentialFile)
-	if e != nil {
-		return yobit.ApiCredential{}, e
-	}
-	var keys yobit.ApiCredential
-	unmarshalError := json.Unmarshal(file, &keys)
-
-	return keys, unmarshalError
-}
-
-func createCredentialFile(adiCredential yobit.ApiCredential) {
-	if _, err := os.Stat(credentialFile); os.IsNotExist(err) {
-		if _, err = os.Create(credentialFile); err != nil {
-			panic(err)
-		}
-	}
-	data, _ := json.Marshal(adiCredential)
-	if err := ioutil.WriteFile(credentialFile, data, 0644); err != nil {
-		panic(err)
 	}
 
 }

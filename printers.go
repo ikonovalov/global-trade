@@ -35,16 +35,35 @@ import (
 	"time"
 	"sort"
 	"github.com/ikonovalov/go-yobit"
+	w "github.com/ikonovalov/global-trade/wrappers"
+	"github.com/miguelmota/go-coinmarketcap"
 )
 
 var (
 	bold []int = tablewriter.Colors{tablewriter.Bold}
 	norm []int = tablewriter.Colors{0}
-)
+	coloredFloat = func(value float64, format string) string {
+		color := Gray
+		if value > 0 {
+			color = Green
+		}
+		if value < 0 {
+			color = Red
+		}
+		return color(fmt.Sprintf(format, value)).String()
+	}
+	coloredPercentage = func(value float64) string {
+		return coloredFloat(value, "%+3.2f")
+	}
+	coloredShift = func(value float64) string {
+		return coloredFloat(value, "%+8.8f")
+	}
+	sprintf64 = func(v float64) string {
+		return fmt.Sprintf("%8.8f", v)
+	}
 
-func sprintf64(v float64) string {
-	return fmt.Sprintf("%8.8f", v)
-}
+
+)
 
 func fatal(v ...interface{}) {
 	fmt.Println(Red(Bold(fmt.Sprint(v))).String())
@@ -79,148 +98,124 @@ func printInfoRecords(infoResponse yobit.InfoResponse, currencyFilter string) {
 	table.Render()
 }
 
-func printWallets(groundCurrency string, fundsAndTickers struct {
-	funds     map[string]float64
-	freeFunds map[string]float64
-	tickers   map[string]yobit.Ticker
-}, updated int64) {
-	// ground means supporting or recalculating currency. For example: "recalculate to an usd or a btc"
-	// setup table
+func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balance, hideZeros bool) {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{
+	header := []string{
 		"#",
+		"exchange",
 		"coin",
 		"hold",
 		"on order",
-		fmt.Sprintf("%s RATE (24AVG)", groundCurrency),
-		fmt.Sprintf("%s RATE (LAST)", groundCurrency),
-		fmt.Sprintf("%s HOLD (24AVG)", groundCurrency),
-		fmt.Sprintf("%s HOLD (LAST)", groundCurrency),
-		"diff (abs)",
-		"diff (%)",
+		"price usd*",
+		"price btc*",
+		"p1h",
+		"p24h",
+		"p7d",
+		"volume usd",
+		"volume btc",
+		"gain/loss24H usd",
+		"gain/loss24H btc",
 		"coin",
-	})
-	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold)
-	table.SetColumnColor(bold, bold, norm, norm, norm, norm, norm, norm, norm, norm, bold)
-
-	// determinate price multiplication indicator
-	const one = float64(1)
-	baseGroundPriceFunc := func(tickerName string) float64 {
-		if tickerName == fmt.Sprintf("%s_%[1]s", groundCurrency) {
-			return one
-		} else {
-			return fundsAndTickers.tickers[tickerName].Avg
-		}
 	}
-	actualGroundPriceFunc := func(tickerName string) float64 {
-		if tickerName == fmt.Sprintf("%s_%[1]s", groundCurrency) {
-			return one
-		} else {
-			return fundsAndTickers.tickers[tickerName].Last
-		}
-	}
-	onOrdersVisualFunction := func(ordered float64, volume float64) string {
-		if ordered == 0 {
-			return ""
-		}
-		if ordered-volume == 0 {
-			return Red(fmt.Sprintf("%8.8f", ordered)).String()
-		} else {
-			return fmt.Sprintf("%8.8f", ordered)
-		}
-	}
-
-	// define global accumulators
-	var (
-		baseGroundTotal   float64
-		actualGroundTotal float64
-		diffGroundTotal   float64 // diff between base and actual totals
-	)
-
-	// order coins by name
-	coins := make([]string, 0, len(fundsAndTickers.funds))
-	for c := range fundsAndTickers.funds {
-		coins = append(coins, c)
-	}
-	sort.Strings(coins)
+	table.SetHeader(header)
+	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, )
+	table.SetColumnColor(bold, bold, bold, norm, norm, norm, norm, norm, norm, norm, norm, norm, norm, norm, bold, )
 
 	var (
-		winners = make([]string, 0, len(coins))
-		losers  = make([]string, 0, len(coins))
+		rowCounter              = 0
+		shouldPrintExchangeName = true
+		totalUsdVolume          = 0.0
+		totalBtcVolume          = 0.0
+		totalGainLossUsdVolume  = 0.0
+		totalGainLossBtcVolume  = 0.0
+		onFatOrdersHighlights   = func(ordered float64, volume float64) string {
+			if ordered == 0 {
+				return ""
+			}
+			if ordered-volume == 0 {
+				return Red(fmt.Sprintf("%8.8f", ordered)).String()
+			} else {
+				return fmt.Sprintf("%8.8f", ordered)
+			}
+		}
+		brownIfShitcoin = func(coinName string) string {
+			if _, ok := coinsMarket[coinName]; ok || coinName == "USD" || coinName == "RUR" {
+				return coinName
+			} else {
+				return Brown(coinName).String()
+			}
+		}
 	)
 
-	rowCounter := 0
+	for _, balance := range balances {
+		shouldPrintExchangeName = true
 
-	for _, coin := range coins {
-		volume := fundsAndTickers.funds[coin]
-		onOrders := volume - fundsAndTickers.freeFunds[coin]
-		if volume == 0 {
-			continue
+		// order coins by name
+		coins := make([]string, 0, len(balance.Funds))
+		for c := range balance.Funds {
+			coins = append(coins, c)
 		}
-		rowCounter++
-		tickerName := fmt.Sprintf("%s_%s", coin, groundCurrency)
+		sort.Strings(coins)
 
-		baseGroundPrice := baseGroundPriceFunc(tickerName)
-		baseGroundCoinPrice := volume * baseGroundPrice
-		baseGroundTotal += baseGroundCoinPrice
+		for _, coin := range coins {
+			volume := balance.Funds[coin]
+			onOrders := volume - balance.AvailableFunds[coin]
+			if hideZeros && volume == 0 {
+				continue
+			}
+			rowCounter++
 
-		actualGroundPrice := actualGroundPriceFunc(tickerName)
-		actualGroundCoinPrice := volume * actualGroundPrice
-		actualGroundTotal += actualGroundCoinPrice
+			coinUpperCase := strings.ToUpper(coin)
+			exchangeName := strings.ToUpper(balance.Exchange.Name)
+			if !shouldPrintExchangeName {
+				exchangeName = ""
+			}
 
-		diffGroundCoinPriceAbs := actualGroundCoinPrice - baseGroundCoinPrice
-		diffGroundTotal += diffGroundCoinPriceAbs
+			coinData := coinsMarket[coinUpperCase]
 
-		var diffGroundCoinPricePercent float64
-		if diffGroundCoinPriceAbs != 0 {
-			diffGroundCoinPricePercent = (actualGroundPrice - baseGroundPrice) / baseGroundPrice * float64(100)
+			volumeUsd := volume * coinData.PriceUsd
+			volumeBtc := volume * coinData.PriceBtc
+			gainLossUsd := volumeUsd * coinData.PercentChange24h / 100
+			gainLossBtc := volumeBtc * coinData.PercentChange24h / 100
+
+			totalUsdVolume += volumeUsd
+			totalBtcVolume += volumeBtc
+			totalGainLossUsdVolume += gainLossUsd
+			totalGainLossBtcVolume += gainLossBtc
+
+			table.Append([]string{
+				fmt.Sprintf("%d", rowCounter),
+				exchangeName,
+				brownIfShitcoin(coinUpperCase),
+				sprintf64(volume),
+				onFatOrdersHighlights(onOrders, volume),
+				sprintf64(coinData.PriceUsd),
+				sprintf64(coinData.PriceBtc),
+				coloredPercentage(coinData.PercentChange1h),
+				coloredPercentage(coinData.PercentChange24h),
+				coloredPercentage(coinData.PercentChange7d),
+				sprintf64(volumeUsd),
+				sprintf64(volumeBtc),
+				coloredShift(gainLossUsd),
+				coloredShift(gainLossBtc),
+				brownIfShitcoin(coinUpperCase),
+			})
+			shouldPrintExchangeName = false
 		}
-
-		var profitColor func(arg interface{}) Value
-		if baseGroundPrice > actualGroundPrice {
-			profitColor = Red
-			losers = append(losers, coin)
-		} else if baseGroundPrice == actualGroundPrice {
-			profitColor = Gray
-		} else {
-			winners = append(winners, coin)
-			profitColor = Green
-		}
-
-		coinUpperCase := strings.ToUpper(coin)
-		table.Append([]string{
-			fmt.Sprintf("%d", rowCounter),
-			coinUpperCase,
-			fmt.Sprintf("%.8f", volume),
-			fmt.Sprintf("%s", onOrdersVisualFunction(onOrders, volume)),
-			fmt.Sprintf("%.8f", baseGroundPrice),
-			fmt.Sprintf("%.8f", profitColor(actualGroundPrice)),
-			fmt.Sprintf("%.8f", baseGroundCoinPrice),
-			fmt.Sprintf("%.8f", profitColor(actualGroundCoinPrice)),
-			fmt.Sprintf("%+8.8f", profitColor(diffGroundCoinPriceAbs)),
-			fmt.Sprintf("%+3.2f", profitColor(diffGroundCoinPricePercent)),
-			coinUpperCase,
-		})
+		table.Append([]string{"", "", "", "", "", "", "", "", "", "", "", "", "",})
 	}
-
 	table.SetFooter([]string{
-		"",
-		"",
-		"",
-		"",
-		time.Unix(updated, 0).Format(time.Stamp),
-		"Total cap",
-		fmt.Sprintf("%8.2f", baseGroundTotal),
-		fmt.Sprintf("%8.2f", actualGroundTotal),
-		fmt.Sprintf("%+8.2f", diffGroundTotal),
-		"",
+		"", "", "", "", "", "", "", "", "",
+		"Total cap", sprintf64(totalUsdVolume), sprintf64(totalBtcVolume),
+		sprintf64(totalGainLossUsdVolume), sprintf64(totalGainLossBtcVolume),
 		"",
 	})
-
-	fmt.Printf("%s Winners: %-3s %v\n", BgGreen(" "), fmt.Sprintf("%d", len(winners)), winners)
-	fmt.Printf("%s Losers : %-3s %v\n", BgRed(" "), fmt.Sprintf("%d", len(losers)), losers)
 
 	table.Render()
+	fmt.Printf("Snapshot: %s\n", time.Now().Format(time.Stamp))
+	fmt.Print("\nLegend\n")
+	fmt.Printf("%s - Is it a shitcoin?\n", BgBrown(" "))
+	fmt.Printf("* - https://coinmarketcap.com/ prices\n")
 }
 
 func printOffers(offers yobit.Offers) {
@@ -344,7 +339,7 @@ func printTradeHistory(history yobit.TradeHistoryResponse) {
 		}
 	}
 	txs := make([]string, 0, len(history.Orders))
-	for tx := range history.Orders{
+	for tx := range history.Orders {
 		txs = append(txs, tx)
 	}
 	sort.Strings(txs)
@@ -419,7 +414,7 @@ func printOrderInfo(orders map[string]yobit.OrderInfo) {
 	table.SetColumnColor(bold, bold, norm, norm, norm, norm, norm)
 	for order, info := range orders {
 		orderTime, _ := strconv.ParseInt(info.Created, 10, 64)
-		fill := math.Abs(info.Amount - info.StartAmount)/info.StartAmount * float64(100)
+		fill := math.Abs(info.Amount-info.StartAmount) / info.StartAmount * float64(100)
 		table.Append([]string{
 			order,
 			strings.ToUpper(info.Pair),

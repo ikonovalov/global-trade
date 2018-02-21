@@ -96,9 +96,10 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 		"p7d",
 		"volume usd",
 		"volume btc",
+		"coin",
 	})
-	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, )
-	table.SetColumnColor(bold, bold, bold, norm, norm, norm, norm, norm, norm, norm, norm, norm, )
+	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, )
+	table.SetColumnColor(bold, bold, bold, norm, norm, norm, norm, norm, norm, norm, norm, norm, bold, )
 
 	var (
 		rowCounter              = 0
@@ -115,11 +116,11 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 				return fmt.Sprintf("%8.8f", ordered)
 			}
 		}
-		brownOnZero = func (value float64) string {
-			if value != 0 {
-				return sprintf64(value)
+		brownIfShitcoin = func (coinName string) string {
+			if _, ok := coinsMarket[coinName]; ok || (coinName == "USD" || coinName == "RUR") {
+				return coinName
 			} else {
-				return Brown(sprintf64(value)).String()
+				return Brown(coinName).String()
 			}
 		}
 		coloredPercentage = func(value float64) string {
@@ -168,23 +169,25 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 			table.Append([]string{
 				fmt.Sprintf("%d", rowCounter),
 				exchangeName,
-				coinUpperCase,
+				brownIfShitcoin(coinUpperCase),
 				sprintf64(volume),
 				onFatOrdersHighlights(onOrders, volume),
-				brownOnZero(coinData.PriceUsd),
-				brownOnZero(coinData.PriceBtc),
+				sprintf64(coinData.PriceUsd),
+				sprintf64(coinData.PriceBtc),
 				coloredPercentage(coinData.PercentChange1h),
 				coloredPercentage(coinData.PercentChange24h),
 				coloredPercentage(coinData.PercentChange7d),
 				sprintf64(volumeUsd),
 				sprintf64(volumeBtc),
+				brownIfShitcoin(coinUpperCase),
 			})
 			shouldPrintExchangeName = false
 		}
+		table.Append([]string{"","","","","","","","","","","","","",})
 	}
 	table.SetFooter([]string{
 		"", time.Now().Format(time.Stamp), "", "", "", "", "" , "", "",
-		"Total cap", sprintf64(totalUsdVolume), sprintf64(totalBtcVolume),
+		"Total cap", sprintf64(totalUsdVolume), sprintf64(totalBtcVolume), "",
 	})
 
 	table.Render()

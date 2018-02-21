@@ -24,42 +24,44 @@
 
 package wrappers
 
-type Balance struct {
-	Exchange       Exchange
-	Funds          map[string]float64
-	AvailableFunds map[string]float64
-}
+type (
+	CryptCurrencyExchange interface {
+		GetTickers([]string, chan<- map[string]Ticker)
+		GetBalances(ch chan<- Balance)
+		Release()
+	}
 
-type Balances []Balance
+	Balance struct {
+		Exchange       Exchange
+		Funds          map[string]float64
+		AvailableFunds map[string]float64
+	}
+
+	Balances []Balance
+
+	Exchange struct {
+		CryptCurrencyExchange
+		Name  string
+		SName string
+		Link  string
+	}
+
+	ByExchangeName struct{ Balances }
+
+	Ticker struct {
+		High    float64
+		Low     float64
+		Avg     float64
+		Vol     float64
+		VolCur  float64
+		Buy     float64
+		Sell    float64
+		Last    float64
+		Updated int64
+	}
+)
 
 func (s Balances) Len() int      { return len(s) }
 func (s Balances) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
-type ByExchangeName struct{ Balances }
-
 func (s ByExchangeName) Less(i, j int) bool { return s.Balances[i].Exchange.Name < s.Balances[j].Exchange.Name }
-
-type Exchange struct {
-	CryptCurrencyExchange
-	Name    string
-	SName   string
-	Link    string
-}
-
-type CryptCurrencyExchange interface {
-	GetTickers([]string, chan <- map[string]Ticker)
-	GetBalances(ch chan<- Balance)
-	Release()
-}
-
-type Ticker struct {
-	High    float64
-	Low     float64
-	Avg     float64
-	Vol     float64
-	VolCur  float64
-	Buy     float64
-	Sell    float64
-	Last    float64
-	Updated int64
-}

@@ -42,11 +42,28 @@ import (
 var (
 	bold []int = tablewriter.Colors{tablewriter.Bold}
 	norm []int = tablewriter.Colors{0}
-)
+	coloredFloat = func(value float64, format string) string {
+		color := Gray
+		if value > 0 {
+			color = Green
+		}
+		if value < 0 {
+			color = Red
+		}
+		return color(fmt.Sprintf(format, value)).String()
+	}
+	coloredPercentage = func(value float64) string {
+		return coloredFloat(value, "%+3.2f")
+	}
+	coloredShift = func(value float64) string {
+		return coloredFloat(value, "%+8.8f")
+	}
+	sprintf64 = func(v float64) string {
+		return fmt.Sprintf("%8.8f", v)
+	}
 
-func sprintf64(v float64) string {
-	return fmt.Sprintf("%8.8f", v)
-}
+
+)
 
 func fatal(v ...interface{}) {
 	fmt.Println(Red(Bold(fmt.Sprint(v))).String())
@@ -89,8 +106,8 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 		"coin",
 		"hold",
 		"on order",
-		"price usd (cmc)",
-		"price btc (cmc)",
+		"price usd*",
+		"price btc*",
 		"p1h",
 		"p24h",
 		"p7d",
@@ -122,27 +139,11 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 			}
 		}
 		brownIfShitcoin = func(coinName string) string {
-			if _, ok := coinsMarket[coinName]; ok || (coinName == "USD" || coinName == "RUR") {
+			if _, ok := coinsMarket[coinName]; ok || coinName == "USD" || coinName == "RUR" {
 				return coinName
 			} else {
 				return Brown(coinName).String()
 			}
-		}
-		coloredFloat = func(value float64, format string) string {
-			color := Gray
-			if value > 0 {
-				color = Green
-			}
-			if value < 0 {
-				color = Red
-			}
-			return color(fmt.Sprintf(format, value)).String()
-		}
-		coloredPercentage = func(value float64) string {
-			return coloredFloat(value, "%+3.2f")
-		}
-		coloredShift = func(value float64) string {
-			return coloredFloat(value, "%+8.8f")
 		}
 	)
 
@@ -214,6 +215,7 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 	fmt.Printf("Snapshot: %s\n", time.Now().Format(time.Stamp))
 	fmt.Print("\nLegend\n")
 	fmt.Printf("%s - Is it a shitcoin?\n", BgBrown(" "))
+	fmt.Printf("* - https://coinmarketcap.com/ prices\n")
 }
 
 func printOffers(offers yobit.Offers) {

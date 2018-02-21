@@ -83,7 +83,7 @@ func printInfoRecords(infoResponse yobit.InfoResponse, currencyFilter string) {
 
 func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balance, hideZeros bool) {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{
+	header := []string{
 		"#",
 		"exchange",
 		"coin",
@@ -97,15 +97,16 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 		"volume usd",
 		"volume btc",
 		"coin",
-	})
+	}
+	table.SetHeader(header)
 	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, )
 	table.SetColumnColor(bold, bold, bold, norm, norm, norm, norm, norm, norm, norm, norm, norm, bold, )
 
 	var (
 		rowCounter              = 0
 		shouldPrintExchangeName = true
-		totalUsdVolume = 0.0
-		totalBtcVolume = 0.0
+		totalUsdVolume          = 0.0
+		totalBtcVolume          = 0.0
 		onFatOrdersHighlights   = func(ordered float64, volume float64) string {
 			if ordered == 0 {
 				return ""
@@ -116,7 +117,7 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 				return fmt.Sprintf("%8.8f", ordered)
 			}
 		}
-		brownIfShitcoin = func (coinName string) string {
+		brownIfShitcoin = func(coinName string) string {
 			if _, ok := coinsMarket[coinName]; ok || (coinName == "USD" || coinName == "RUR") {
 				return coinName
 			} else {
@@ -183,11 +184,14 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 			})
 			shouldPrintExchangeName = false
 		}
-		table.Append([]string{"","","","","","","","","","","","","",})
+		table.Append([]string{"", "", "", "", "", "", "", "", "", "", "", "", "",})
 	}
 	table.SetFooter([]string{
-		"", time.Now().Format(time.Stamp), "", "", "", "", "" , "", "",
-		"Total cap", sprintf64(totalUsdVolume), sprintf64(totalBtcVolume), "",
+		"",
+		time.Now().Format(time.Stamp),
+		"", "", "", "", "", "", "",
+		"Total cap", sprintf64(totalUsdVolume), sprintf64(totalBtcVolume),
+		"",
 	})
 
 	table.Render()

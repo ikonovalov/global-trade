@@ -36,7 +36,7 @@ import (
 )
 
 var (
-	EtherScan = Exchange{Name: "Ethereum", Link: "etherscan.io"}
+	EtherScan = Exchange{Name: "Ethereum", Link: "etherscan.io", Cold: true}
 	client    = http.Client{Timeout: time.Second * 10}
 )
 

@@ -96,17 +96,21 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 		"p7d",
 		"volume usd",
 		"volume btc",
+		"gain/loss24H usd",
+		"gain/loss24H btc",
 		"coin",
 	}
 	table.SetHeader(header)
-	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, )
-	table.SetColumnColor(bold, bold, bold, norm, norm, norm, norm, norm, norm, norm, norm, norm, bold, )
+	table.SetHeaderColor(bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, bold, )
+	table.SetColumnColor(bold, bold, bold, norm, norm, norm, norm, norm, norm, norm, norm, norm, norm, norm, bold, )
 
 	var (
 		rowCounter              = 0
 		shouldPrintExchangeName = true
 		totalUsdVolume          = 0.0
 		totalBtcVolume          = 0.0
+		totalGainLossUsdVolume  = 0.0
+		totalGainLossBtcVolume  = 0.0
 		onFatOrdersHighlights   = func(ordered float64, volume float64) string {
 			if ordered == 0 {
 				return ""
@@ -124,7 +128,7 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 				return Brown(coinName).String()
 			}
 		}
-		coloredPercentage = func(value float64) string {
+		coloredFloat = func(value float64, format string) string {
 			color := Gray
 			if value > 0 {
 				color = Green
@@ -132,7 +136,13 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 			if value < 0 {
 				color = Red
 			}
-			return color(fmt.Sprintf("%+3.2f", value)).String()
+			return color(fmt.Sprintf(format, value)).String()
+		}
+		coloredPercentage = func(value float64) string {
+			return coloredFloat(value, "%+3.2f")
+		}
+		coloredShift = func(value float64) string {
+			return coloredFloat(value, "%+8.8f")
 		}
 	)
 
@@ -164,8 +174,13 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 
 			volumeUsd := volume * coinData.PriceUsd
 			volumeBtc := volume * coinData.PriceBtc
+			gainLossUsd := volumeUsd * coinData.PercentChange24h / 100
+			gainLossBtc := volumeBtc * coinData.PercentChange24h / 100
+
 			totalUsdVolume += volumeUsd
 			totalBtcVolume += volumeBtc
+			totalGainLossUsdVolume += gainLossUsd
+			totalGainLossBtcVolume += gainLossBtc
 
 			table.Append([]string{
 				fmt.Sprintf("%d", rowCounter),
@@ -180,6 +195,8 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 				coloredPercentage(coinData.PercentChange7d),
 				sprintf64(volumeUsd),
 				sprintf64(volumeBtc),
+				coloredShift(gainLossUsd),
+				coloredShift(gainLossBtc),
 				brownIfShitcoin(coinUpperCase),
 			})
 			shouldPrintExchangeName = false
@@ -187,15 +204,14 @@ func printWallets(coinsMarket map[string]coinmarketcap.Coin, balances []w.Balanc
 		table.Append([]string{"", "", "", "", "", "", "", "", "", "", "", "", "",})
 	}
 	table.SetFooter([]string{
-		"",
-		time.Now().Format(time.Stamp),
-		"", "", "", "", "", "", "",
+		"", "", "", "", "", "", "", "", "",
 		"Total cap", sprintf64(totalUsdVolume), sprintf64(totalBtcVolume),
+		sprintf64(totalGainLossUsdVolume), sprintf64(totalGainLossBtcVolume),
 		"",
 	})
 
 	table.Render()
-
+	fmt.Printf("Snapshot: %s\n", time.Now().Format(time.Stamp))
 	fmt.Print("\nLegend\n")
 	fmt.Printf("%s - Is it a shitcoin?\n", BgBrown(" "))
 }

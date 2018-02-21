@@ -44,6 +44,7 @@ type (
 		Name  string
 		SName string
 		Link  string
+		Cold  bool
 	}
 
 	ByExchangeName struct{ Balances }

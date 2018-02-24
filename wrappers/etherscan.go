@@ -41,6 +41,10 @@ var (
 )
 
 type (
+	EtherScanCredential struct {
+		Accounts []string `json:"accounts"`
+	}
+
 	EtherScanAccountBalancesResponse struct {
 		Status  string            `json:"status"`
 		Message string            `json:"message"`
@@ -84,10 +88,6 @@ func (e EthereumBalances) SummaryBalance() Balance {
 		Funds:          funds,
 		AvailableFunds: funds,
 	}
-}
-
-type EtherScanCredential struct {
-	Accounts []string `json:"accounts"`
 }
 
 func GetEthereumBalances(addresses []string, ch chan<- EthereumBalances) {

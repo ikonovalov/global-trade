@@ -28,8 +28,6 @@ import (
 	"github.com/toorop/go-bittrex"
 	"time"
 	"log"
-	"fmt"
-	"os"
 	"github.com/ikonovalov/go-cloudflare-scraper"
 	"net/http"
 )
@@ -117,9 +115,4 @@ func (bw *BittrexWrapper) GetTickers(paris []string, ch chan <- map[string]Ticke
 
 func (bw *BittrexWrapper) Release()  {
 	// nothing to do now
-}
-
-func fatal(v ...interface{}) {
-	fmt.Printf("%s\n", fmt.Sprint(v))
-	os.Exit(1)
 }

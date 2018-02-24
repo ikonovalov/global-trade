@@ -33,11 +33,12 @@ import (
 )
 
 type GlobalCredentials struct {
-	Version    uint16                        `json:"version"`
-	Encryption bool                          `json:"encryption"`
-	Yobit      wrappers.YobitApiCredential   `json:"yobit,omitempty"`
-	Bittrex    wrappers.BittrexApiCredential `json:"bittrex,omitempty"`
-	Etherscan  wrappers.EtherScanCredential  `json:"etherscan,omitempty"`
+	Version     uint16                         `json:"version"`
+	Encryption  bool                           `json:"encryption"`
+	Yobit       wrappers.YobitApiCredential    `json:"yobit,omitempty"`
+	Bittrex     wrappers.BittrexApiCredential  `json:"bittrex,omitempty"`
+	Etherscan   wrappers.EtherScanCredential   `json:"etherscan,omitempty"`
+	BlockCypher wrappers.BlockCypherCredential `json:"blockcypher,omitempty"`
 }
 
 func loadApiCredential() (GlobalCredentials, error) {

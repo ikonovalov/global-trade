@@ -169,9 +169,13 @@ func main() {
 			balancesChannel := make(chan wr.Balance, 2)
 			cmcMarketChannel := make(chan map[string]coinmarketcap.Coin)
 			etherScanChannel := make(chan wr.EthereumBalances)
+			litecoinChannel := make(chan wr.BlochCypherBalances)
 
 			// get EtherScan accounting data
 			go wr.GetEthereumBalances(credential.Etherscan.Accounts, etherScanChannel)
+
+			// get LTC from Blockcyper.com
+			go wr.GetLiteCoinBalances(credential.BlockCypher.LTC, litecoinChannel)
 
 			// get CoinMarketCup market data
 			go cmc.GetMarketData(cmcMarketChannel)
@@ -181,7 +185,7 @@ func main() {
 				go exc.GetBalances(balancesChannel)
 			}
 
-			allBalances := []wr.Balance{<-balancesChannel, <-balancesChannel, (<-etherScanChannel).SummaryBalance()}
+			allBalances := []wr.Balance{<-balancesChannel, <-balancesChannel, (<-etherScanChannel).SummaryBalance(), (<-litecoinChannel).SummaryBalance()}
 			sort.Sort(wr.ByExchangeName{allBalances})
 
 			printWallets(<-cmcMarketChannel, allBalances, true)

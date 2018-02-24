@@ -25,54 +25,51 @@
 package wrappers
 
 import (
-	"fmt"
-	"os"
+	"github.com/blockcypher/gobcy"
+	"time"
+	"math"
+)
+
+var(
+	BlockCypher = Exchange{Name: "LiteCoin", Link: "blockcypher.com", Cold: true}
+	litecoinDecimalPoint = math.Pow(10.0, 8.0)
 )
 
 type (
-	CryptCurrencyExchange interface {
-		GetTickers([]string, chan<- map[string]Ticker)
-		GetBalances(ch chan<- Balance)
-		Release()
+	BlockCypherCredential struct {
+		LTC []string `json:"ltc,omitempty"`
 	}
-
-	Balance struct {
-		Exchange       Exchange
-		Funds          map[string]float64
-		AvailableFunds map[string]float64
-	}
-
-	Balances []Balance
-
-	Exchange struct {
-		CryptCurrencyExchange
-		Name  string
-		SName string
-		Link  string
-		Cold  bool
-	}
-
-	ByExchangeName struct{ Balances }
-
-	Ticker struct {
-		High    float64
-		Low     float64
-		Avg     float64
-		Vol     float64
-		VolCur  float64
-		Buy     float64
-		Sell    float64
-		Last    float64
-		Updated int64
-	}
+	BlochCypherBalances []gobcy.Addr
 )
 
-func (s Balances) Len() int      { return len(s) }
-func (s Balances) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (bcb BlochCypherBalances) SummaryBalance() (Balance) {
+	totalBalance := 0.0
+	for _, addr := range bcb {
+		totalBalance += float64(addr.FinalBalance)
+	}
 
-func (s ByExchangeName) Less(i, j int) bool { return s.Balances[i].Exchange.Name < s.Balances[j].Exchange.Name }
+	funds := map[string]float64{ "LTC": totalBalance / litecoinDecimalPoint}
 
-func fatal(v ...interface{}) {
-	fmt.Printf("%s\n", fmt.Sprint(v))
-	os.Exit(1)
+	return Balance{
+		Exchange:       BlockCypher,
+		Funds: funds,
+		AvailableFunds: funds,
+	}
+}
+
+func GetLiteCoinBalances(accounts []string, ch chan <- BlochCypherBalances)  {
+	btc := gobcy.API{ Coin:"ltc", Chain: "main"}
+	accLen := len(accounts)
+	rs := make([]gobcy.Addr, 0, accLen)
+	for _, acc := range accounts {
+		addr, err := btc.GetAddrBal(acc, nil)
+		if err != nil {
+			fatal(err)
+		}
+		rs = append(rs, addr)
+		if accLen > 1 {
+			time.Sleep(time.Millisecond * 200)
+		}
+	}
+	ch <- rs
 }
